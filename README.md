@@ -1,4 +1,5 @@
 # Microbiome_Analysis
+
 =======
 ## Analysis of (gut) microbiome in Qiime2 and R.
 
@@ -15,4 +16,5 @@ Using ASV table and repseqs we create a phylogenetic tree using SEPP package in 
 
 ##4. Importing unrooted tree, ASV table and repseqs with the metadata to R using qiime2R package into R. 
 Using qiime2R package, we can bring all generated artifacts from qiime2 into R and integrate them into one phyloseq object by qiime_to_phyloseq()
+
 
