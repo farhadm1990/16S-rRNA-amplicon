@@ -1,6 +1,4 @@
 # Microbiome_Analysis
-<<<<<<< Updated upstream
- Analysis of (gut) microbiome in Qiime2 and R.
 =======
 ## Analysis of (gut) microbiome in Qiime2 and R.
 
@@ -11,4 +9,5 @@ In this step we use DADA2 package to create the ASV tables and representative se
 
 ##2. Training a primer region-specific classifier for taxonomic classification by Naïve-Bayes method (in Qiime2)
 In this step RESCRIPr will be used for creating more region specific, more sensitive based on our primerset.
->>>>>>> Stashed changes
+
+
