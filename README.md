@@ -2,15 +2,18 @@
 
 ## Analysis of (gut) microbiome in Qiime2 and R.
 
-In this module, I will walk you through the necessary steps involved in analysis of microbiome sequence data from raw sequences to publication quality graphs and visualizations. The module includes the following steps:
+In this module, I will walk you through the necessary steps involved in analysis of microbiome sequence data from raw sequences to publication quality graphs and visualizations. 
+Note: all this workflow has been done on jupyter notebook on a cluster node with 120 GB processer from Aarhus University, Denmark. In order to multitask in different nodes, different tasks have been submited to the cluster by a bash script. 
+
+The module includes the following steps:
 
 ## 1. Importing the data into Qiime2
-Here we import the raw sequences into a qiime artifact. Sequence data are paired end in the format of FASTA with quality score (Fastaq); therefore, in qiime2 ther type will be "SampleData[PairedEndSequencesWithQuality]" and their imput format asigned as PairedEndFastqManifestPhred33V2. The input path must be defined by a manifest file which includes the name of the sample and a path to each sample sequence.
+Here we import the raw sequences into a qiime artifact. Sequence data are paired end in the format of FASTA with quality score (Fastaq); therefore, in qiime2 ther type will be "SampleData[PairedEndSequencesWithQuality]" and their imput format asigned as PairedEndFastqManifestPhred33V2. The input path must be defined by a manifest file which includes the name of the sample and a path to each sample sequence. 
 
 ## 2. Quality control and merging paired-end sequences (in Qiime2)
 In this step we use DADA2 package to create the ASV tables and representative sequences (repseqs).
 
-## 3. Training a primer region-specific classifier for taxonomic classification by Naïve-Bayes method (in Qiime2)
+## 3. Training a primer region-specific classifier for taxonomic classification by NaÃ¯ve-Bayes method (in Qiime2)
 In this step RESCRIPr will be used for creating more region specific, more sensitive based on our primerset.
 
 ## 4. Creating a phylogenetic tree using SATE-enabled phyhlogenetic placement (SEPP) method
