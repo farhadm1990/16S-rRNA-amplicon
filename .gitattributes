@@ -1,5 +1,5 @@
-# Auto detect text files and perform LF normalization
-* text=auto
+# Importing sequences into qiime2: the following bash script is used to import sequences into qiime through manifestArranged.tsv file.
+
 #!/bin/bash
 #SBATCH -p xxx_v3
 #SBATCH -N 1
