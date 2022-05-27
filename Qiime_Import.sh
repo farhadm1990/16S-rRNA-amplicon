@@ -1,4 +1,3 @@
-```
 #!/bin/bash
 #SBATCH -p NAME OF CLUSTER NODE
 #SBATCH -N 1
@@ -18,4 +17,3 @@ qiime tools import \
 
 cd $SLURM_SUBMIT_DIR
 rm -rf /scratch/$USER/$SLURM_JOBID
-```
