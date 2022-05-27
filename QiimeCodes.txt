@@ -1,1 +1,24 @@
+#Importing the raw data from our local drive to the work directory, here in this instance, into Jupyter notebook workflow.
+# In this example, you can see that the code is enscripted into a bash file, which allows us to do other parallel tasks on the cluster.
+
+#!/bin/bash
+#SBATCH -p NAME OF THE NODE
+#SBATCH -N 1
+#SBATCH --mem=32G 
+#SBATCH -t 24:00:00
+
+TMPDIR=/scratch/$USER/$SLURM_JOBID
+export TMPDIR
+mkdir -p $TMPDIR
+
+source activate qiime2.8
+qiime tools import \
+  --type "SampleData[PairedEndSequencesWithQuality]" \ #type of the sequence data, here is paired end with quality score (fastq)
+  --input-format PairedEndFastqManifestPhred33V2 \
+  --input-path ~/data/dss/amplicons/manifestArranged.tsv \ #the manisfest data which links you to the local location of the sequences
+  --output-path ~/data/dss/demuxed-dss.qza #the output is the demultiplex data
+
+cd $SLURM_SUBMIT_DIR
+rm -rf /scratch/$USER/$SLURM_JOBID
+
 
