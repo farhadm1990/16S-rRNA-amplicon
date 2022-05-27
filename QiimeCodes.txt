@@ -13,10 +13,10 @@ mkdir -p $TMPDIR
 
 source activate qiime2.8
 qiime tools import \
-  --type "SampleData[PairedEndSequencesWithQuality]" \ #type of the sequence data, here is paired end with quality score (fastq)
+  --type "SampleData[PairedEndSequencesWithQuality]" \       #the type of the sequence data, here is paired end with quality score (fastq)
   --input-format PairedEndFastqManifestPhred33V2 \
-  --input-path ~/data/dss/amplicons/manifestArranged.tsv \ #the manisfest data which links you to the local location of the sequences
-  --output-path ~/data/dss/demuxed-dss.qza #the output is the demultiplex data
+  --input-path ~/data/dss/amplicons/manifestArranged.tsv \   #the manisfest data which links you to the local location of the sequences
+  --output-path ~/data/dss/demuxed-dss.qza                   #the output is the demultiplex data
 
 cd $SLURM_SUBMIT_DIR
 rm -rf /scratch/$USER/$SLURM_JOBID
