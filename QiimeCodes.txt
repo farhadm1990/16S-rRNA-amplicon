@@ -1,7 +1,7 @@
 #Importing the raw data from our local drive to the work directory, here in this instance, into Jupyter notebook workflow.
 # In this example, you can see that the code is enscripted into a bash file, which allows us to do other parallel tasks on the cluster.
 
-```ruby
+*
 #!/bin/bash
 #SBATCH -p NAME OF THE NODE
 #SBATCH -N 1
@@ -21,5 +21,5 @@ qiime tools import \
 
 cd $SLURM_SUBMIT_DIR
 rm -rf /scratch/$USER/$SLURM_JOBID
-```
+*
 
