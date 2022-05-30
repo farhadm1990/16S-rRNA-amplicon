@@ -1,4 +1,5 @@
-Before we continue on this jurney, I highly recommend you to check out the doc vignette of the [qiime tutorials](https://docs.qiime2.org/2022.2/tutorials/) related to the [installation](https://docs.qiime2.org/2022.2/install/native/) and case studies, such as [Parkinson's Mouse Tutorial](https://docs.qiime2.org/2022.2/tutorials/pd-mice/) for instance. 
+Before we continue on this jurney, I highly recommend you to check out the doc vignette of the [qiime tutorials](https://docs.qiime2.org/2022.2/tutorials/) related to the [installation](https://docs.qiime2.org/2022.2/install/native/) and case studies, such as [Parkinson's Mouse Tutorial](https://docs.qiime2.org/2022.2/tutorials/pd-mice/) for instance. Therefore, I declare that all qiime-related codes are basically copied and costumized based on [qiime tutorials](https://docs.qiime2.org/2022.2/tutorials/) and at any applicable point, I tried to provided the reader with the relevant references. If you come across something without reference, please don't go mad at me and just let me know about it ;)
+
 ## 1. Importing raw data into Qiime2
 Here we import the raw sequences into a qiime artifact. But first you need to download the amplicon data [here](https://www.dropbox.com/scl/fo/o2j5uwiaynh6owsom9kf0/h?dl=0&rlkey=4qvl191j9zfx4332tfm4pul1k) and save it on your local drive. In order to bring the sequences from the local path (here they are saved on a folder in my cluster called 'amplicons', you must use this [bash command](https://github.com/farhadm1990/Microbiome_analysis/blob/main/scripts/import.sh). The input path must be defined by a [manifest file](https://github.com/farhadm1990/Microbiome_analysis/blob/main/manifestArranged.tsv), which includes the name of the sample and a path to each sample sequence for both forward (in one column) and reverse reads (in another column). Sequence data are paired end in the format of FASTA with quality score (Fastaq); therefore, in qiime2 the type will be "SampleData[PairedEndSequencesWithQuality]" and their imput format asigned as PairedEndFastqManifestPhred33V2.  
 Here is the command:
@@ -94,6 +95,19 @@ As you can see we have a [metadata](https://docs.qiime2.org/2022.2/tutorials/met
 Bellow you can see our [metadata file](https://github.com/farhadm1990/Microbiome_analysis/blob/main/metadataArranged.tsv):
 ![alt text](https://github.com/farhadm1990/Microbiome_analysis/blob/main/Pix/Metadata.PNG)
 
+You can also do the visualization for the `repseqsNoFilt.qza` file as follows:
+```phython
+qiime feature-table tabulate-seqs \
+--i-data repseqsNoFilt.qza \
+--o-visualization repseqsNoFilt.qzv
+```
+And visualization for the `denoising-statsNoFilt.qza` file:
+```python
+qiime metadata tabulate \
+--m-input-file ./denoising-statsNoFilt.qza \
+--o-visualization ./denoising-statsNoFilt.qzv
+```
+If you drag and drop the `tableNoFilt.qzv` file in [qiime2 view](https://view.qiime2.org/), you can see three main menues; `Overview`, `Interactive Sample Detail` and `Feature Detail`. 
 ## 3. Training a primer region-specific classifier for taxonomic classification by Naïve-Bayes method (in Qiime2)
 In this step RESCRIPr will be used for creating more region specific, more sensitive based on our primerset.
 
