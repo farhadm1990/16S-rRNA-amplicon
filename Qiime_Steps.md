@@ -25,7 +25,7 @@ cd $SLURM_SUBMIT_DIR
 rm -rf /scratch/$USER/$SLURM_JOBID
 ```
 
-You can submit this bash script, which has a '.sh' format to the cluster by the following command:
+You can submit this bash script, which has a `.sh` format to the cluster by the following command:
 
 ```python
 sbatch import.sh
