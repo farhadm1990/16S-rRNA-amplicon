@@ -81,7 +81,7 @@ mkdir -p $TMPDIR
 
 source activate qiime2.8
 qiime dada2 denoise-paired --i-demultiplexed-seqs \
-~/data/dss/demuxed-dss.qza \
+~/data/dss/demuxed-dss.qza \ #the **input** file for denoising is our demultiplexed pairedEnd reads that was generated in the previous step.
 --p-trim-left-f 17 \ #length of my forward primer (17 nt) 
 --p-trim-left-r 21 \ #length of my reverse primer (21 nt)
 --p-trunc-len-f 260 \ #truncation length for forward reads. I.e. we truncate reads over 260 base since their quality started dropping from this point onwards. 
