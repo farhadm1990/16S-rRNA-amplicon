@@ -8,13 +8,13 @@ Note: all this workflow has been done on Jupyter notebook on a cluster node with
 This module includes the following steps
 
 # [Steps in **Qiime**](https://github.com/farhadm1990/Microbiome_analysis/blob/main/Qiime_Steps.md)
-## 1. Importing raw data into Qiime2
-## 2. Filtering, dereplication, sample inference, chimera identification, and merging of paired-end reads by DADA2 package in qiime2
-## 3. Training a primer-based region-specific classifier for taxonomic classification by Naïve-Bayes method (in Qiime2)
-## 4. Creating a phylogenetic tree using SATE-enabled phyhlogenetic placement (SEPP) method
+### 1. Importing raw data into Qiime2
+### 2. Filtering, dereplication, sample inference, chimera identification, and merging of paired-end reads by DADA2 package in qiime2
+### 3. Training a primer-based region-specific classifier for taxonomic classification by Naïve-Bayes method (in Qiime2)
+### 4. Creating a phylogenetic tree using SATE-enabled phyhlogenetic placement (SEPP) method
 
 
 # [Steps in **R**](https://github.com/farhadm1990/Microbiome_analysis/blob/main/Steps_R.md)
 
-## 1. Importing unrooted tree, ASV table and repseqs with the metadata to R using qiime2R package into R. 
-## 2. R-based analysis of microbiome data
+### 1. Importing unrooted tree, ASV table and repseqs with the metadata to R using qiime2R package into R. 
+### 2. R-based analysis of microbiome data
