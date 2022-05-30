@@ -50,6 +50,7 @@ qiime demux summarize \
   --o-visualization ./demuxed-dss.qzv
 
 ```
+This `deuxed-dss.qzv`is a visualized format of our `deuxed-dss.qza`, which you can view it on [qiime2 viewer](https://view.qiime2.org/). Once you are there you can either drag-and-drop the artifact into the designated area or simpley copy the link to the artifact from [this repository](https://github.com/farhadm1990/Microbiome_analysis/blob/main/artifacts/demuxed-dss.qzv) and paste it in the box `file from the web`.
 
 ## 2. Quality control and merging paired-end sequences (in Qiime2)
 In this step we use DADA2 package to create the ASV tables and representative sequences (repseqs).
