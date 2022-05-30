@@ -40,6 +40,15 @@ You can submit this bash script, which has a '.sh' format to the cluster by the 
 sbatch import.sh
 ```
 
+This might take a while before you get the results. The output of this, is a '.qza' file that you have already specified it in the command, in this example 'demuxed-dss.qza'. You can then create a visualized file from this artifact, with the following command:
+
+```python
+qiime demux summarize \
+  --i-data ./demuxed-dss.qza \
+  --o-visualization ./demuxed-dss.qzv
+
+```
+
 ## 2. Quality control and merging paired-end sequences (in Qiime2)
 In this step we use DADA2 package to create the ASV tables and representative sequences (repseqs).
 
