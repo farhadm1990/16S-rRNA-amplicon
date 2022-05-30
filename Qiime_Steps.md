@@ -110,7 +110,7 @@ qiime metadata tabulate \
 --o-visualization ./denoising-statsNoFilt.qzv
 ```
 If you drag and drop the `tableNoFilt.qzv` file in [qiime2 view](https://view.qiime2.org/), you can see three main menues; `Overview`, `Interactive Sample Detail` and `Feature Detail`. 
-## 3. Training a primer region-specific classifier for taxonomic classification by Naïve-Bayes method (in Qiime2)
+## 3. Training a primer-based region-specific classifier for taxonomic classification by Naïve-Bayes method (in Qiime2)
 In this step RESCRIPr will be used for creating more region specific, more sensitive based on our primerset.
 
 ## 4. Creating a phylogenetic tree using SATE-enabled phyhlogenetic placement (SEPP) method
