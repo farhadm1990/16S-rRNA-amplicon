@@ -42,7 +42,7 @@ You can submit this bash script, which has a '.sh' format to the cluster by the 
 sbatch import.sh
 ```
 
-This might take a while before you get the results. The output of this, is a '.qza' file that you have already specified it in the command, in this example 'demuxed-dss.qza'. You can then create a visualized file from this artifact, with the following command:
+This might take a while before you get the results. The output of this, is a `.qza` file that you have already specified it in the command, in this example `demuxed-dss.qza`. You can then create a visualized file from this artifact, with the following command:
 
 ```python
 qiime demux summarize \
@@ -50,7 +50,8 @@ qiime demux summarize \
   --o-visualization ./demuxed-dss.qzv
 
 ```
-This `deuxed-dss.qzv`is a visualized format of our `demuxed-dss.qza`, which you can view it on [qiime2 viewer](https://view.qiime2.org/). Once you are there you can either drag-and-drop the artifact into the designated area or simpley copy the link to the artifact from [this repository](https://github.com/farhadm1990/Microbiome_analysis/blob/main/artifacts/demuxed-dss.qzv) and paste it in the box `file from the web`.
+This `deuxed-dss.qzv`is a visualized format of our `demuxed-dss.qza`, which you can view it on [qiime2 viewer](https://view.qiime2.org/). Once you are there you can either drag-and-drop the [downloaded](https://github.com/farhadm1990/Microbiome_analysis/blob/main/artifacts/demuxed-dss.qzv?raw=true) artifact into the designated area or simpley copy the link to the artifact from [this repository](https://github.com/farhadm1990/Microbiome_analysis/blob/main/artifacts/demuxed-dss.qzv) and paste it in the box *file from the web*. Once there, you must come across the following picture:
+(https://github.com/farhadm1990/Microbiome_analysis/blob/main/Pix/Demux.PNG)
 
 ## 2. Quality control and merging paired-end sequences (in Qiime2)
 In this step we use DADA2 package to create the ASV tables and representative sequences (repseqs).
