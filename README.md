@@ -62,7 +62,7 @@ In the `Interactive Quality Plot` at the top left, you can see the quality (Phre
 
 Understanding this plot is very important for your denoising step, i.e. you must decide a truncation length for each forward and reverse reads in a way to keep at least 50% of the reads equal or above Q = 30. You can see this changes by hovering over the interactive box plots. You can see that in forward reads for example, the quality of reads starts falling in sequence baces of above 260 nt and already in 220 nt for reverse reads.
 
-## 2. Quality control and merging paired-end sequences (in Qiime2)
+## 2. Filtering, dereplication, sample inference, chimera identification, and merging of paired-end reads by [DADA2](https://www.nature.com/articles/nmeth.3869) package in qiime2.
 In this step we use DADA2 package to denoise  create the ASV tables and representative sequences (repseqs).
 
 ## 3. Training a primer region-specific classifier for taxonomic classification by Naïve-Bayes method (in Qiime2)
