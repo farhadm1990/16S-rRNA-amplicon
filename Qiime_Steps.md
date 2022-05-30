@@ -84,6 +84,15 @@ cd $SLURM_SUBMIT_DIR
 rm -rf /scratch/$USER/$SLURM_JOBID
 
 ```
+Now you can visualize the ASV table to create a `.qzv` by the following command:
+```python
+qiime feature-table summarize --i-table ./tableNoFilt.qza \ #The ASV table as the input
+--m-sample-metadata-file ./metadataArranged.tsv \           #The metadata as the input
+--o-visualization ./tableNoFilt.qzv                         #The qzv format of our ASV table
+```
+As you can see we have a [metadata](https://docs.qiime2.org/2022.2/tutorials/metadata/?highlight=metadata) field, which is required for our visualizations and downstream analysis. A metadata is basically a tab-delimited, usually `.tsv` or `.csv`, file which links each sample to its original parents, i.e. the SampleID, the design of the experiemnt, the type of treatment etc.
+Bellow you can see our [metadata file](https://github.com/farhadm1990/Microbiome_analysis/blob/main/metadataArranged.tsv):
+![alt text](https://github.com/farhadm1990/Microbiome_analysis/blob/main/Pix/Metadata.PNG)
 
 ## 3. Training a primer region-specific classifier for taxonomic classification by Naïve-Bayes method (in Qiime2)
 In this step RESCRIPr will be used for creating more region specific, more sensitive based on our primerset.
