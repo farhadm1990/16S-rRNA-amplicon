@@ -7,7 +7,7 @@ Note: all this workflow has been done on Jupyter notebook on a cluster node with
 
 This module includes the following steps:
 
-## 1. Importing raw data into Qiime2
+## [1. Importing raw data into Qiime2](https://github.com/farhadm1990/Microbiome_analysis/blob/main/Qiime_Import.sh)
 Here we import the raw sequences into a qiime artifact. Sequence data are paired end in the format of FASTA with quality score (Fastaq); therefore, in qiime2 the type will be "SampleData[PairedEndSequencesWithQuality]" and their imput format asigned as PairedEndFastqManifestPhred33V2. The input path must be defined by a manifest file which includes the name of the sample and a path to each sample sequence. 
 
 ## 2. Quality control and merging paired-end sequences (in Qiime2)
