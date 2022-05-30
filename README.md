@@ -80,16 +80,16 @@ export TMPDIR
 mkdir -p $TMPDIR
 
 source activate qiime2.8
-qiime dada2 denoise-paired --i-demultiplexed-seqs \
-~/data/dss/demuxed-dss.qza \ #the **input** file for denoising is our demultiplexed pairedEnd reads that was generated in the previous step.
---p-trim-left-f 17 \ #length of my forward primer (17 nt) 
---p-trim-left-r 21 \ #length of my reverse primer (21 nt)
---p-trunc-len-f 260 \ #truncation length for forward reads. I.e. we truncate reads over 260 base since their quality started dropping from this point onwards. 
---p-trunc-len-r 220 \ #truncation length for reverse reads. I.e. we truncate reads over 220 base since their quality started dropping from this point onwards. 
---o-table ~/data/dss/tableNoFilt.qza \ #the ASV count table
+qiime dada2 denoise-paired \
+--i-demultiplexed-seqs ~/data/dss/demuxed-dss.qza \         #the input file for denoising is our demultiplexed pairedEnd reads that was generated in the previous step.
+--p-trim-left-f 17 \                                        #length of my forward primer (17 nt) 
+--p-trim-left-r 21 \                                        #length of my reverse primer (21 nt)
+--p-trunc-len-f 260 \                                       #truncation length for forward reads. I.e. we truncate reads over 260 base since their quality started dropping from this point onwards. 
+--p-trunc-len-r 220 \                                       #truncation length for reverse reads. I.e. we truncate reads over 220 base since their quality started dropping from this point onwards. 
+--o-table ~/data/dss/tableNoFilt.qza \                      #the ASV count table
 --o-representative-sequences ~/data/dss/repseqsNoFilt.qza \ #the representative sequences for in each read
 --o-denoising-stats ~/data/dss/denoising-statsNoFilt.qza \  #the status of the denoising process in a full catalogue
---p-n-threads 10 #number of the processors assinged for this task.
+--p-n-threads 10                                            #number of the processors assinged for this task.
 
 cd $SLURM_SUBMIT_DIR
 rm -rf /scratch/$USER/$SLURM_JOBID
