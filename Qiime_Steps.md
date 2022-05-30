@@ -96,12 +96,14 @@ Bellow you can see our [metadata file](https://github.com/farhadm1990/Microbiome
 ![alt text](https://github.com/farhadm1990/Microbiome_analysis/blob/main/Pix/Metadata.PNG)
 
 You can also do the visualization for the `repseqsNoFilt.qza` file as follows:
-```phython
+
+```python
 qiime feature-table tabulate-seqs \
 --i-data repseqsNoFilt.qza \
 --o-visualization repseqsNoFilt.qzv
 ```
 And visualization for the `denoising-statsNoFilt.qza` file:
+
 ```python
 qiime metadata tabulate \
 --m-input-file ./denoising-statsNoFilt.qza \
