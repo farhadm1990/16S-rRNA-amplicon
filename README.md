@@ -56,11 +56,11 @@ This `deuxed-dss.qzv`is a visualized format of our `demuxed-dss.qza`, which you 
 
 On this `overview` page you can see counts of demultiplexed sequences for the entire samples for both forward and reverse reads, with min, median, mean and max and total counts. 
 
-In the `Interactive Quality Plot` at the top left, you can seee the quality (Phred, Q) score for the sequence bases in forward and reverse reads. 
+In the `Interactive Quality Plot` at the top left, you can see the quality (Phred, Q) score for the sequence bases in forward and reverse reads. 
 
 ![alt text](https://github.com/farhadm1990/Microbiome_analysis/blob/main/Pix/demux-interactive.PNG)
 
-Understanding this plot is very important for your denoising step, i.e. you must decide a truncation length for each forward and reverse reads in a way to keep at least 25% of the reads equal or above Q = 30. You can see this changes by hovering over the interactive box plots. You can see that in forward reads for example, the quality of reads starts falling in sequence baces of above 260 nt and already in 220 nt for reverse reads.
+Understanding this plot is very important for your denoising step, i.e. you must decide a truncation length for each forward and reverse reads in a way to keep at least 50% of the reads equal or above Q = 30. You can see this changes by hovering over the interactive box plots. You can see that in forward reads for example, the quality of reads starts falling in sequence baces of above 260 nt and already in 220 nt for reverse reads.
 
 ## 2. Quality control and merging paired-end sequences (in Qiime2)
 In this step we use DADA2 package to denoise  create the ASV tables and representative sequences (repseqs).
