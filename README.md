@@ -62,9 +62,10 @@ In the `Interactive Quality Plot` at the top left, you can see the quality (Phre
 
 Understanding this plot is very important for your denoising step, i.e. you must decide a truncation length for each forward and reverse reads in a way to keep at least 50% of the reads equal or above Q = 30. You can see this changes by hovering over the interactive box plots. You can see that in forward reads for example, the quality of reads starts falling in sequence baces of above 260 nt and already in 220 nt for reverse reads.
 
-## 2. Filtering, dereplication, sample inference, chimera identification, and merging of paired-end reads by [DADA2](https://www.nature.com/articles/nmeth.3869) package in qiime2.
-In this step we use DADA2 package to denoise  create the ASV tables and representative sequences (repseqs).
-
+## 2. Filtering, dereplication, sample inference, chimera identification, and merging of paired-end reads by DADA2 package in qiime2.
+In this step we use [DADA2](https://www.nature.com/articles/nmeth.3869) package to denoise the read and create the ASV tables and representative sequences (repseqs). 
+Denoising is refered to sequence inference by resolving the sequencing erroros for each sequence as small as 1 nucleotide, which creates Amplicon Sequence Variants (ASVs). Denoising is superior over Operationals Taxonomic Units (OTU), which is clustering sequence reads into [OTUs](https://peerj.com/articles/5364/) at a defined cut-off rate for similarity (≥ 97), in a way that OTU clusters two different sequnces as the same OTU even if they are different in 3 nt. While, ASV can be as acurate as 1 nt difference. 
+In denoising, we use 
 ## 3. Training a primer region-specific classifier for taxonomic classification by Naïve-Bayes method (in Qiime2)
 In this step RESCRIPr will be used for creating more region specific, more sensitive based on our primerset.
 
