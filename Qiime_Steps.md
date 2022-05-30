@@ -109,7 +109,7 @@ qiime metadata tabulate \
 --m-input-file ./denoising-statsNoFilt.qza \
 --o-visualization ./denoising-statsNoFilt.qzv
 ```
-If you drag and drop the `tableNoFilt.qzv` file in [qiime2 view](https://view.qiime2.org/), you can see three main menues; `Overview`, `Interactive Sample Detail` and `Feature Detail`. 
+If you drag and drop the `tableNoFilt.qzv` file in [qiime2 view](https://view.qiime2.org/), you can see three main menues; `Overview`, `Interactive Sample Detail` and `Feature Detail`. If you click on `Interactive Sample Detail` you can see a slider to the left of the picture which could be changed, based which you can arbiterarily decide, to which depth of reading you can do your rarefaction. 
 ## 3. Training a primer-based region-specific classifier for taxonomic classification by Naïve-Bayes method (in Qiime2)
 In this step RESCRIPr will be used for creating more region specific, more sensitive based on our primerset.
 
