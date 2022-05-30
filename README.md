@@ -8,10 +8,10 @@ Note: all this workflow has been done on Jupyter notebook on a cluster node with
 This module includes the following steps
 
 # [Steps in **Qiime**](https://github.com/farhadm1990/Microbiome_analysis/blob/main/Qiime_Steps.md)
-### 1. Importing raw data into Qiime2
-### 2. Filtering, dereplication, sample inference, chimera identification, and merging of paired-end reads by DADA2 package in qiime2
-### 3. Training a primer-based region-specific classifier for taxonomic classification by Naïve-Bayes method (in Qiime2)
-### 4. Creating a phylogenetic tree using SATE-enabled phyhlogenetic placement (SEPP) method
+### [1. Importing raw data into Qiime2](https://github.com/farhadm1990/Microbiome_analysis/blob/main/Qiime_Steps.md#1-importing-raw-data-into-qiime2)
+### [2. Filtering, dereplication, sample inference, chimera identification, and merging of paired-end reads by DADA2 package in qiime2](https://github.com/farhadm1990/Microbiome_analysis/blob/main/Qiime_Steps.md#2-filtering-dereplication-sample-inference-chimera-identification-and-merging-of-paired-end-reads-by-dada2-package-in-qiime2)
+### [3. Training a primer-based region-specific classifier for taxonomic classification by Naïve-Bayes method (in Qiime2)](https://github.com/farhadm1990/Microbiome_analysis/blob/main/Qiime_Steps.md#3-training-a-primer-region-specific-classifier-for-taxonomic-classification-by-na%C3%AFve-bayes-method-in-qiime2)
+### [4. Creating a phylogenetic tree using SATE-enabled phyhlogenetic placement (SEPP) method](https://github.com/farhadm1990/Microbiome_analysis/blob/main/Qiime_Steps.md#4-creating-a-phylogenetic-tree-using-sate-enabled-phyhlogenetic-placement-sepp-method)
 
 
 # [Steps in **R**](https://github.com/farhadm1990/Microbiome_analysis/blob/main/Steps_R.md)
