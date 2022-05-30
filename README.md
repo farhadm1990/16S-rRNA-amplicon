@@ -8,16 +8,16 @@ Note: all this workflow has been done on Jupyter notebook on a cluster node with
 This module includes the following steps:
 
 # Steps in **Qiime**:
-
+Before we continue on this jurney, I highly recommend you to check out the doc vignette of the [qiime tutorials](https://docs.qiime2.org/2022.2/tutorials/) related to the [installation](https://docs.qiime2.org/2022.2/install/native/) and case studies, such as [Parkinson's Mouse Tutorial](https://docs.qiime2.org/2022.2/tutorials/pd-mice/) for instance. 
 ## [1. Importing raw data into Qiime2](https://github.com/farhadm1990/Microbiome_analysis/blob/main/Qiime_Import.sh)
 Here we import the raw sequences into a qiime artifact. But first you need to download the amplicon data [here](https://www.dropbox.com/scl/fo/o2j5uwiaynh6owsom9kf0/h?dl=0&rlkey=4qvl191j9zfx4332tfm4pul1k) and save it on your local drive. In order to bring the sequences from the local path (here they are saved on a folder in my cluster called 'amplicons', you must use this [bash command](https://github.com/farhadm1990/Microbiome_analysis/blob/main/scripts/import.sh). The input path must be defined by a [manifest file](https://github.com/farhadm1990/Microbiome_analysis/blob/main/manifestArranged.tsv), which includes the name of the sample and a path to each sample sequence for both forward (in one column) and reverse reads (in another column). Sequence data are paired end in the format of FASTA with quality score (Fastaq); therefore, in qiime2 the type will be "SampleData[PairedEndSequencesWithQuality]" and their imput format asigned as PairedEndFastqManifestPhred33V2.  
 Here is the command:
 ```python
 #!/bin/bash
-#SBATCH -p ghpc_v3
-#SBATCH -N 1
-#SBATCH --mem=32G 
-#SBATCH -t 24:00:00
+#SBATCH -p ghpc_v3     #here is the name of the cluster node assigned for my work
+#SBATCH -N 1           #number of the cores of processor on the cluster
+#SBATCH --mem=32G      #required processor capacity
+#SBATCH -t 24:00:00    #resrvation time
 
 TMPDIR=/scratch/$USER/$SLURM_JOBID
 export TMPDIR
@@ -27,11 +27,17 @@ source activate qiime2.8
 qiime tools import \
   --type "SampleData[PairedEndSequencesWithQuality]" \
   --input-format PairedEndFastqManifestPhred33V2 \
-  --input-path ~/data/dss/amplicons/manifestArranged.tsv \
-  --output-path ~/data/dss/demuxed-dss.qza
+  --input-path ~/data/dss/amplicons/manifestArranged.tsv \ #link to the folder in which my manifest file is located
+  --output-path ~/data/dss/demuxed-dss.qza                 # link to the path where I want my demultiplexed data to be exported in
 
 cd $SLURM_SUBMIT_DIR
 rm -rf /scratch/$USER/$SLURM_JOBID
+```
+
+You can submit this bash script, which has a '.sh' format to the cluster by the following command:
+
+```python
+sbatch import.sh
 ```
 
 ## 2. Quality control and merging paired-end sequences (in Qiime2)
