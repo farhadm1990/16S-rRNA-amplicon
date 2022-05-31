@@ -166,7 +166,7 @@ qiime metadata tabulate \
 --m-input-file ~/data/dss/Taxonomy/taxonomyNoFilt.qza \
 --o-visualization ~/data/dss/Taxonomy/taxonomyNoFilt.qzv
 ```
-It might look the bellow figure. You can see a feature ID correspondent to the each sequence, the taxonomic order, and the confidence interval for this classification. 
+It might look like the bellow figure. You can see a feature ID correspondent to each sequences, the taxonomic order, and the confidence interval for this classification. 
 
 ![alt text](https://github.com/farhadm1990/Microbiome_analysis/blob/main/Pix/Taxa%20table.PNG)
 > Figure 5. A taxonomy table should containe the sequence/feature ID, taxon and maybe confidence interval. 
