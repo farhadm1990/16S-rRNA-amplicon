@@ -43,12 +43,14 @@ qiime demux summarize \
 This `demuxed-dss.qzv`is a visualized format of our `demuxed-dss.qza`, which you can view it on [qiime2 viewer](https://view.qiime2.org/). Once you are there you can either drag-and-drop the [downloaded](https://github.com/farhadm1990/Microbiome_analysis/blob/main/artifacts/demuxed-dss.qzv?raw=true) artifact into the designated area or simpley copy the link to the artifact from [this repository](https://github.com/farhadm1990/Microbiome_analysis/blob/main/artifacts/demuxed-dss.qzv) and paste it in the box *file from the web*. Once there, you must come across the following picture:
 
 ![alt text](https://github.com/farhadm1990/Microbiome_analysis/blob/main/Pix/Demux.PNG)
+> Figure 1. Demultiplexed pairedEnd reads.
 
 On this `overview` page you can see counts of demultiplexed sequences for the entire samples for both forward and reverse reads, with min, median, mean and max and total counts. 
 
 In the `Interactive Quality Plot` at the top left, you can see the quality (Phred, Q) score for the sequence bases in forward and reverse reads. 
 
 ![alt text](https://github.com/farhadm1990/Microbiome_analysis/blob/main/Pix/demux-interactive.PNG)
+> Figure 2. Interacvive plot for demultiplexed pairedEnd reads. 
 
 Understanding this plot is very important for your denoising step, i.e. you must decide a truncation length for each forward and reverse reads in a way to keep at least 50% of the reads equal or above Q = 30. You can see this changes by hovering over the interactive box plots. You can see that in forward reads for example, the quality of reads starts falling in sequence baces of above 260 nt and already in 220 nt for reverse reads.
 
@@ -93,7 +95,9 @@ qiime feature-table summarize --i-table ./tableNoFilt.qza \ #The ASV table as th
 ```
 As you can see we have a [metadata](https://docs.qiime2.org/2022.2/tutorials/metadata/?highlight=metadata) field, which is required for our visualizations and downstream analysis. A metadata is basically a tab-delimited, usually `.tsv` or `.csv`, file which links each sample to its original parents, i.e. the SampleID, the design of the experiemnt, the type of treatment etc.
 Bellow you can see our [metadata file](https://github.com/farhadm1990/Microbiome_analysis/blob/main/metadataArranged.tsv):
+
 ![alt text](https://github.com/farhadm1990/Microbiome_analysis/blob/main/Pix/Metadata.PNG)
+> Figure 3. A small metadata including the sample IDs, treatment, block etc.
 
 You can also do the visualization for the `repseqsNoFilt.qza` file as follows:
 
@@ -110,7 +114,9 @@ qiime metadata tabulate \
 --o-visualization ./denoising-statsNoFilt.qzv
 ```
 If you drag and drop the `tableNoFilt.qzv` file in [qiime2 view](https://view.qiime2.org/), you can see three main menues; `Overview`, `Interactive Sample Detail` and `Feature Detail`. If you click on `Interactive Sample Detail` you can see a slider to the left of the picture which could be changed, based which you can arbiterarily decide, to which depth of reading you can do your rarefaction. Nonetheless, I am not going to do any rarefaction or preprocessings in qiime, but rather I will continue to create other artifacts in qiime2 and further transfer them to R. For now, you can take a look at the `tableNoFilt.qzv` file in qiime viewer. 
+
 ![alt text](https://github.com/farhadm1990/Microbiome_analysis/blob/main/Pix/ASV%20table%20in%20qiime.PNG)
+> Figure 4. ASV table indicating number of reads per sample.
 
 You can move the left right slider to see how many features you would keep in how many samples. If you want to keep doing the downstream analysis, you can use this indicator as a premise to decide which reading depth you choose for rarefaction. 
 
@@ -162,8 +168,8 @@ qiime metadata tabulate \
 ```
 It might look the bellow figure. You can see a feature ID correspondent to the each sequence, the taxonomic order, and the confidence interval for this classification. 
 
-
-
+![alt text](https://github.com/farhadm1990/Microbiome_analysis/blob/main/Pix/Taxa%20table.PNG)
+> Figure 5. A taxonomy table should containe the sequence/feature ID, taxon and maybe confidence interval. 
 
 ## 4. Creating a phylogenetic tree using SATE-enabled phyhlogenetic placement (SEPP) method
 Using ASV table and repseqs we create a phylogenetic tree using SEPP package in Qiime2
