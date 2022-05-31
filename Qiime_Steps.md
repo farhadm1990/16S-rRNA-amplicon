@@ -109,7 +109,11 @@ qiime metadata tabulate \
 --m-input-file ./denoising-statsNoFilt.qza \
 --o-visualization ./denoising-statsNoFilt.qzv
 ```
-If you drag and drop the `tableNoFilt.qzv` file in [qiime2 view](https://view.qiime2.org/), you can see three main menues; `Overview`, `Interactive Sample Detail` and `Feature Detail`. If you click on `Interactive Sample Detail` you can see a slider to the left of the picture which could be changed, based which you can arbiterarily decide, to which depth of reading you can do your rarefaction. 
+If you drag and drop the `tableNoFilt.qzv` file in [qiime2 view](https://view.qiime2.org/), you can see three main menues; `Overview`, `Interactive Sample Detail` and `Feature Detail`. If you click on `Interactive Sample Detail` you can see a slider to the left of the picture which could be changed, based which you can arbiterarily decide, to which depth of reading you can do your rarefaction. Nonetheless, I am not going to do any rarefaction or preprocessings in qiime, but rather I will continue to create other artifacts in qiime2 and further transfer them to R. For now, you can take a look at the `tableNoFilt.qzv` file in qiime viewer. 
+![alt text](https://github.com/farhadm1990/Microbiome_analysis/blob/main/Pix/ASV%20table%20in%20qiime.PNG)
+
+You can move the left right slider to see how many features you would keep in how many samples. If you want to keep doing the downstream analysis, you can use this indicator as a premise to decide which reading depth you choose for rarefaction. 
+
 ## 3. Training a primer-based region-specific classifier for taxonomic classification by Naïve-Bayes method (in Qiime2)
 In this step RESCRIPr will be used for creating more region specific, more sensitive based on our primerset.
 
