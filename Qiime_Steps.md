@@ -115,7 +115,55 @@ If you drag and drop the `tableNoFilt.qzv` file in [qiime2 view](https://view.qi
 You can move the left right slider to see how many features you would keep in how many samples. If you want to keep doing the downstream analysis, you can use this indicator as a premise to decide which reading depth you choose for rarefaction. 
 
 ## 3. Training a primer-based region-specific classifier for taxonomic classification by Naïve-Bayes method (in Qiime2)
-For taxonomic classifications, you need to have a classifier to which you blast your sequences against to find out which taxonomic groups each sequence belongs to. This is also called reference phylogeny, which is a cruitial step in identifying the marker genes (in this case 16S rRNA) taken from different environmental a in saco samples. In order to do so, there are different 16S rRNA databases, of which [Greengens](https://www.nature.com/articles/ismej2011139) and [SILVA](https://www.arb-silva.de/) are well-known databases for the full length of 16S rRNA genes. You can always download the pre-trained classifiers at the [Data Resources](https://docs.qiime2.org/2022.2/data-resources/) of qiime2 website. However, it is always safe to train your classfier based on your own primersets.  this step RESCRIPr will be used for creating more region specific, more sensitive based on our primerset.
+For taxonomic classifications, you need to have a classifier to which you blast your sequences against to find out which taxonomic groups each sequence belongs to. This is also called reference phylogeny, which is a cruitial step in identifying the marker genes (in this case 16S rRNA) taken from different environmental a in saco samples. In order to do so, there are different 16S rRNA databases, of which [Greengens](https://www.nature.com/articles/ismej2011139) and [SILVA](https://www.arb-silva.de/) are well-known databases for the full length of 16S rRNA genes. You can always download the pre-trained classifiers at the [Data Resources](https://docs.qiime2.org/2022.2/data-resources/) of qiime2 website. However, it is always safe to train your classfier based on your own primersets and based on a Naive-Bayesian method. In order to do so, I have followed [this toturial](https://forum.qiime2.org/t/processing-filtering-and-evaluating-the-silva-database-and-other-reference-sequence-data-with-rescript/15494#heading--sixth-header) by [Mike Robeson](https://forum.qiime2.org/u/SoilRotifer) and I have used SILVA 138 dataset for training my classifier with the follwoing command:
+
+```python
+#!/bin/bash
+#SBATCH --mem-per-cpu 64G
+#SBATCH -c 1
+#SBATCH -t 24:00:00
+
+source activate qiime2
+TMPDIR=/scratch/$SLURM_JOB_ID 
+qiime feature-classifier fit-classifier-naive-bayes \   # here you can use train your classifier based on Naive-Bayes method
+--i-reference-reads ~/derepseqs-uniq-341f-805r.qza \    # Dereplicated sequences based on the primer set as input
+--i-reference-taxonomy ~/dereptaxa-uniq-341f-805r.qza\  # Dereplicated taxonomic annotations based on the primer set as input
+ --o-classifier ~/silva-classifier-primered4.qza        # The final classifier as the output
+```
+This `bash` task took around 12h on a cluster with 64G memory capacity. After you got `silva-classifier-primered4.qza` classifier file, you can use it for your taxonomic classifications as follows:
+
+```python
+#!/bin/bash
+#SBATCH -p ghpc
+#SBATCH -N 1
+#SBATCH -n 10  
+#SBATCH --mem=64G
+#SBATCH -t 2:00:00
+
+TMPDIR=/scratch/$USER/$SLURM_JOBID
+export TMPDIR
+mkdir -p $TMPDIR
+
+source activate qiime2.8
+qiime feature-classifier classify-sklearn \                               # Sklearn package for classification
+--i-reads ~/data/dss/repseqsNoFilt.qza \                                  # Representative sequences as the (input)
+--i-classifier ~/data/dss/classifier/silva138-classifier-341f-805r.qza \  # Our costumized SILVA 138 classifier (input)
+--o-classification ~/data/dss/Taxonomy/taxonomyNoFilt.qza --p-n-jobs 10   # The taxonomic annotation linked to the repseqs (output)
+
+cd $SLURM_SUBMIT_DIR 
+rm -rf /scratch/$USER/$SLURM_JOBID
+```
+And then you can visualize your taxa table with the following code:
+
+```python
+qiime metadata tabulate \
+--m-input-file ~/data/dss/Taxonomy/taxonomyNoFilt.qza \
+--o-visualization ~/data/dss/Taxonomy/taxonomyNoFilt.qzv
+```
+It might look the bellow figure. You can see a feature ID correspondent to the each sequence, the taxonomic order, and the confidence interval for this classification. 
+
+
+
 
 ## 4. Creating a phylogenetic tree using SATE-enabled phyhlogenetic placement (SEPP) method
 Using ASV table and repseqs we create a phylogenetic tree using SEPP package in Qiime2
