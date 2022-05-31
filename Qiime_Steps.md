@@ -43,7 +43,7 @@ qiime demux summarize \
 This `demuxed-dss.qzv`is a visualized format of our `demuxed-dss.qza`, which you can view it on [qiime2 viewer](https://view.qiime2.org/). Once you are there you can either drag-and-drop the [downloaded](https://github.com/farhadm1990/Microbiome_analysis/blob/main/artifacts/demuxed-dss.qzv?raw=true) artifact into the designated area or simpley copy the link to the artifact from [this repository](https://github.com/farhadm1990/Microbiome_analysis/blob/main/artifacts/demuxed-dss.qzv) and paste it in the box *file from the web*. Once there, you must come across the following picture:
 
 ![alt text](https://github.com/farhadm1990/Microbiome_analysis/blob/main/Pix/Demux.PNG)
-> Figure 1. Demultiplexed pairedEnd reads.
+> **Figure 1*. Demultiplexed pairedEnd reads.
 
 On this `overview` page you can see counts of demultiplexed sequences for the entire samples for both forward and reverse reads, with min, median, mean and max and total counts. 
 
