@@ -2,7 +2,7 @@
 
 ## Analysis of (gut) microbiome in **Qiime2** and **R**.
 
-In this module, I will walk you through the necessary steps involved in the analysis of 16S rRNA microbiome amplicone data from raw sequences to publication quality visualisations and statistical analysis. 
+In this module, I will walk you through the necessary steps involved in the analysis of 16S rRNA microbiome amplicone data from raw sequences to publication quality visualisations and statistical analysis. Non-cultured 16S rRNA metagnomics is a promissing method for understanding the ecology of an environemnt in regards with the number and the structure of the microbiome in association with the environmental factos, e.g. host-microbiome interactions. In prokaryots there is a ubiquitous gene compartment integrated in the ribosome, so-called 16S rRNA genes, which are highly conserved among prokaryots and at the same time having hypervariable regions (HVRs) V1 to V9, which are good targets for evolutionary and ecological studies on prokaryotes [Jünemann et. al (2017)](https://www.sciencedirect.com/science/article/pii/S0168165617315985). This module is mainly focused on 16S rRNA gene data, but I can carefully say that you can apply most of the techniques explained here on genome data and count multivariate datasets.  
 Note: all this workflow has been done on Jupyter notebook on a cluster node with 120 GB processer from Aarhus University, Denmark. In order to multitask in different nodes, tasks on Qiime2 have been submited to the cluster by seperate bash scripts.
 
 This module includes the following steps
