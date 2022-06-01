@@ -26,13 +26,17 @@ cd $SLURM_SUBMIT_DIR
 rm -rf /scratch/$USER/$SLURM_JOBID
 ```
 
+
 You can submit this bash script, which has a `.sh` format to the cluster by the following command:
+
 
 ```python
 sbatch import.sh
 ```
 
+
 This might take a while before you get the results. The output of this, is a `.qza` file that you have already specified it in the command, in this example `demuxed-dss.qza`. You can then create a visualized file from this artifact, with the following command:
+
 
 ```python
 qiime demux summarize \
@@ -40,6 +44,7 @@ qiime demux summarize \
   --o-visualization ./demuxed-dss.qzv
 
 ```
+
 This `demuxed-dss.qzv`is a visualized format of our `demuxed-dss.qza`, which you can view it on [qiime2 viewer](https://view.qiime2.org/). Once you are there you can either drag-and-drop the [downloaded](https://github.com/farhadm1990/Microbiome_analysis/blob/main/artifacts/demuxed-dss.qzv?raw=true) artifact into the designated area or simpley copy the link to the artifact from [this repository](https://github.com/farhadm1990/Microbiome_analysis/blob/main/artifacts/demuxed-dss.qzv) and paste it in the box *file from the web*. Once there, you must come across the following picture:
 
 ![alt text](https://github.com/farhadm1990/Microbiome_analysis/blob/main/Pix/Demux.PNG)
@@ -98,8 +103,10 @@ qiime feature-table summarize --i-table ./tableNoFilt.qza \ #The ASV table as th
 --m-sample-metadata-file ./metadataArranged.tsv \           #The metadata as the input
 --o-visualization ./tableNoFilt.qzv                         #The qzv format of our ASV table
 ```
+
 As you can see we have a [metadata](https://docs.qiime2.org/2022.2/tutorials/metadata/?highlight=metadata) field, which is required for our visualizations and downstream analysis. A metadata is basically a tab-delimited, usually `.tsv` or `.csv`, file which links each sample to its original parents, i.e. the SampleID, the design of the experiemnt, the type of treatment etc.
 Bellow you can see our [metadata file](https://github.com/farhadm1990/Microbiome_analysis/blob/main/metadataArranged.tsv):
+
 
 ![alt text](https://github.com/farhadm1990/Microbiome_analysis/blob/main/Pix/Metadata.PNG)
 > **Figure 4**. A small metadata including the sample IDs, treatment, block etc.
@@ -111,22 +118,29 @@ qiime feature-table tabulate-seqs \
 --i-data repseqsNoFilt.qza \
 --o-visualization repseqsNoFilt.qzv
 ```
+
 And visualization for the `denoising-statsNoFilt.qza` file:
+
 
 ```python
 qiime metadata tabulate \
 --m-input-file ./denoising-statsNoFilt.qza \
 --o-visualization ./denoising-statsNoFilt.qzv
 ```
+
 If you drag and drop the `tableNoFilt.qzv` file in [qiime2 view](https://view.qiime2.org/), you can see three main menues; `Overview`, `Interactive Sample Detail` and `Feature Detail`. If you click on `Interactive Sample Detail` you can see a slider to the left of the picture which could be changed, based which you can arbiterarily decide, to which depth of reading you can do your rarefaction. Nonetheless, I am not going to do any rarefaction or preprocessings in qiime, but rather I will continue to create other artifacts in qiime2 and further transfer them to R. For now, you can take a look at the `tableNoFilt.qzv` file in qiime viewer. 
+
 
 ![alt text](https://github.com/farhadm1990/Microbiome_analysis/blob/main/Pix/ASV%20table%20in%20qiime.PNG)
 > **Figure 5**. ASV table indicating number of reads per sample.
 
+
 You can move the left right slider to see how many features you would keep in how many samples. If you want to keep doing the downstream analysis, you can use this indicator as a premise to decide which reading depth you choose for rarefaction. 
+
 
 ## 3. Training a primer-based region-specific classifier for taxonomic classification by Naïve-Bayes method (in Qiime2)
 For taxonomic classifications, you need to have a classifier to which you blast your sequences against to find out which taxonomic groups each sequence belongs to. This is also called reference phylogeny, which is a cruitial step in identifying the marker genes (in this case 16S rRNA) taken from different environmental a in saco samples. In order to do so, there are different 16S rRNA databases, of which [Greengens](https://www.nature.com/articles/ismej2011139) and [SILVA](https://www.arb-silva.de/) are well-known databases for the full length of 16S rRNA genes. You can always download the pre-trained classifiers at the [Data Resources](https://docs.qiime2.org/2022.2/data-resources/) of qiime2 website. However, it is always safe to train your classfier based on your own primersets and based on a Naive-Bayesian method. In order to do so, I have followed [this toturial](https://forum.qiime2.org/t/processing-filtering-and-evaluating-the-silva-database-and-other-reference-sequence-data-with-rescript/15494#heading--sixth-header) by [Mike Robeson](https://forum.qiime2.org/u/SoilRotifer) and I have used SILVA 138 dataset for training my classifier with the follwoing command:
+
 
 ```python
 #!/bin/bash
@@ -141,7 +155,10 @@ qiime feature-classifier fit-classifier-naive-bayes \   # here you can use train
 --i-reference-taxonomy ~/dereptaxa-uniq-341f-805r.qza\  # Dereplicated taxonomic annotations based on the primer set as input
  --o-classifier ~/silva-classifier-primered4.qza        # The final classifier as the output
 ```
+
+
 This `bash` task took around 12h on a cluster with 64G memory capacity. After you got `silva-classifier-primered4.qza` classifier file, you can use it for your taxonomic classifications as follows:
+
 
 ```python
 #!/bin/bash
@@ -164,6 +181,8 @@ qiime feature-classifier classify-sklearn \                               # Skle
 cd $SLURM_SUBMIT_DIR 
 rm -rf /scratch/$USER/$SLURM_JOBID
 ```
+
+
 And then you can visualize your taxa table with the following code:
 
 ```python
@@ -171,14 +190,17 @@ qiime metadata tabulate \
 --m-input-file ~/data/dss/Taxonomy/taxonomyNoFilt.qza \
 --o-visualization ~/data/dss/Taxonomy/taxonomyNoFilt.qzv
 ```
+
 It might look like the bellow figure. You can see a feature ID correspondent to each sequences, the taxonomic order, and the confidence interval for this classification. 
 
 ![alt text](https://github.com/farhadm1990/Microbiome_analysis/blob/main/Pix/Taxa%20table.PNG)
 > **Figure 6**. A taxonomy table should containe the sequence/feature ID, taxon and maybe confidence interval. 
 
+
 ## 4. Creating a phylogenetic tree using SATE-enabled phyhlogenetic placement (SEPP) method for diversity analysis
 There are different methods for generating the phylogenetic tree, e.g. *de novo* clustering and sequence insertion. According to the [authors](https://www.worldscientific.com/doi/abs/10.1142/9789814366496_0024) on this method, Phylogenetic placement is refered to inserting short molecular sequences (called query sequences) into an existing phylogenetic tree and aligning it on full-length sequences for the same gene. This can provide information beyond pure “species identification” but also about the evolutionary relationships between these query sequences and to known species. Phylogenetic placement operates in two steps; first, an alignment is estimated for each query sequence to the alignment of the full-length sequences, and then that alignment is used to find the optimal location in the phylogenetic tree for the query sequence ([Tandy Warnow, 2015](https://link.springer.com/referenceworkentry/10.1007/978-1-4899-7478-5_711)). You can download the `SEPP` dataset [here](https://data.qiime2.org/2022.2/common/sepp-refs-gg-13-8.qza).  
 In this mdoule, we can create our phylogenetic tree using ASV table and repseqs as input using `fragment-insertion sepp` package in Qiime2 in the following bash script:
+
 
 ```python
 #!/bin/bash
