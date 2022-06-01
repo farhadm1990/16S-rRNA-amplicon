@@ -14,7 +14,7 @@ This module includes the following steps
 ### [4. Creating a phylogenetic tree using SATE-enabled phyhlogenetic placement (SEPP) method](https://github.com/farhadm1990/Microbiome_analysis/blob/main/Qiime_Steps.md#4-creating-a-phylogenetic-tree-using-sate-enabled-phyhlogenetic-placement-sepp-method)
 
 
-# [Steps in **R**](https://github.com/farhadm1990/Microbiome_analysis/blob/main/Steps_R.md)
+# [Steps in **R**](https://github.com/farhadm1990/Microbiome_analysis/blob/main/R_steps.md)
 
 ### 1. Importing unrooted tree, ASV table and repseqs with the metadata to R using qiime2R package into R. 
 ### 2. R-based analysis of microbiome data
