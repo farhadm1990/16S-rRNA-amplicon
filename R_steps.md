@@ -20,5 +20,17 @@ pst <- merge_phyloseq(pst, repseqs)
 
 Now `pst` is a `phyloseq` object containing all the artifacts and the metadata to our samples.
 
+```R
+#Converting all non-numeric/logical charatcters in the metadata into factors including pig_no, treatment, dss and gb
+
+for(i in seq_len(ncol(sample_data(pst)))) {
+ if(!is.numeric(sample_data(pst)[[i]]) && !is.logical(sample_data(pst)[[i]])) {
+    sample_data(pst)[[i]] = as.factor(sample_data(pst)[[i]])  } else {
+     sample_data(pst)[[i]]
+ } 
+}
+
+```
+
 ## 2. R-based analysis of microbiome data
 When we imported all the artifacts from **qiime2** into **R**, we can use different packages and costume functions to render different *preprocessing* and *analitycal* steps.
