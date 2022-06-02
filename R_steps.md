@@ -19,6 +19,28 @@ pst <- merge_phyloseq(pst, repseqs)
 ```
 
 Now `pst` is a `phyloseq` object containing all the artifacts and the metadata to our samples.
+And if you want to see what does pst object contain, you can simply type `pst` and hit `ctrl/option(on mac)` + `enter` 
+
+ ```R
+pst
+phyloseq-class experiment-level object
+otu_table()   OTU Table:         [ 4540 taxa and 108 samples ]
+sample_data() Sample Data:       [ 108 samples by 11 sample variables ]
+tax_table()   Taxonomy Table:    [ 4540 taxa by 7 taxonomic ranks ]
+phy_tree()    Phylogenetic Tree: [ 4540 tips and 4520 internal nodes ]
+refseq()      DNAStringSet:      [ 4540 reference sequences ]
+```
+
+If you want to revoke any artifacts from `pst` object, you can use the designated calling functons in phyloseq:
+
+```R
+otu_table(pst)    #To call ASV count table
+tax_table(pst)    #To call taxonomy table 
+phy_tree(pst)     #To call the phylogenetic tree
+refseq(pst)       #To call the representative sequences for each ASV
+sample_data(pst)  #To call the metadata
+```
+You can also convert the class of each variable in your metadata by the following code:
 
 ```R
 #Converting all non-numeric/logical charatcters in the metadata into factors including pig_no, treatment, dss and gb
