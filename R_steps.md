@@ -7,7 +7,6 @@ Using qiime2R package, we can bring all generated artifacts from qiime2 into R a
 library("qiime2R")
 library("phyloseq")
 
-#ps total (pst) directly from qiime
 pst <- qza_to_phyloseq(features = "./tableNoFilt.qza", tree = "./treeNoFilt.qza", 
                        taxonomy = "./Taxonomy/taxonomy-dssNoFilt.qza", metadata = "./metadataNoFilt.tsv")
  
@@ -15,7 +14,11 @@ pst <- qza_to_phyloseq(features = "./tableNoFilt.qza", tree = "./treeNoFilt.qza"
 repseqs <- read_qza("./repseqsNoFilt.qza")$data
 
 pst <- merge_phyloseq(pst, repseqs)
+
+  
 ```
+
+Now `pst` is a `phyloseq` object containing all the artifacts and the metadata to our samples.
 
 ## 2. R-based analysis of microbiome data
 When we imported all the artifacts from **qiime2** into **R**, we can use different packages and costume functions to render different *preprocessing* and *analitycal* steps.
