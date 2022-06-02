@@ -63,7 +63,7 @@ sample_data(pst)$treatment<-factor(sample_data(pst)$treatment, levels = c('CT','
 ```
 ## 2. Preprocessing and cleaning up the dataset
 
-# Decontamination of the reads by `Decontam` package:
+### Decontamination of the reads by `Decontam` package: unsupervised
 It is based on the reads in the negative samples (here we have 5 neg samples) according to their prevalenc (not frequency), which is presence/absence of ASVs across samples.
 The default threshold for a contaminant is that it reaches a probability of 0.1 in the statistical test being performed. In another word, an ASV should be present in at least 10% of the samples to pass the filter.  We can also try it with 0.5.
 
@@ -88,6 +88,35 @@ tax_table(pst)[rownames(tax_table(pst))%in%contamASV,]
 
 #removing the contaminant ASVs from our phyloseq object
 pst <- subset_taxa(pst, taxa_names(pst)!=contamASV)
+
+#Now that we are done with the negative controls, we can remove them 
+pst<- subset_samples(pst, !rownames(sample_data(pst))%in%neg_cont)
+```
+
+### Removing unasigned or NA reads from Phylum taxonomic level:
+
+```R
+pst <- subset_taxa(pst, !is.na(Phylum) & !Phylum %in% c("", "uncharacterized", "unassigned"))
+
+```
+
+
+### Taxonomic filtering based on prevalence: supervsed
+
+```R
+#monitoring the number of the samples in which the prevalence of a taxon is at least one
+prevdf <- apply(otu_table(pst),ifelse(taxa_are_rows(pst), 1, 2), function(x){sum(x>0)})
+prevdf <-data.frame(ASVprev = prevdf, 
+                   TaxaAbund = taxa_sums(pst),
+                   tax_table(pst))
+head(prevdf)
+#Find out the phyla that are of mostly low-prevalence features by computing the total and average prev of features in Phylum
+plyr::ddply(prevdf, "Phylum", function(df){cbind(means = round(mean(df$ASVprev), 2), sums = round(sum(df$ASVprev),
+                                         2))}) %>% mutate(sanity = ifelse(means == sums, "TRUE", "FALSE"))
+#in the phylum level, Deinococcota and Myxococcota appeared only in one percent of samples and therefore, they will be filtered from the dataset
+junkphyl = c("Myxococcota", "Deinococcota")
+pst = subset_taxa(pst, !Phylum %in% junkphyl)
+
 ```
 
 ## 2. R-based analysis of microbiome data
