@@ -30,6 +30,13 @@ for(i in seq_len(ncol(sample_data(pst)))) {
  } 
 }
 
+#Optional: renaming the treatment levels
+iflese(sample_data(pst)$treatment == "ct", "CT", ifelse(sample_data(pst)$treatment == "gb", "GB",
+ifelse(sample_data(pst)$treatment == "dss", "DSS", ifelse(sample_data(pst)$treatment == "gbdss", "GBDSS", "NegCtrl"))
+
+# Releveling the treatment factrs
+
+sample_data(pst)$treatment<-factor(sample_data(pst)$treatment, levels = c('CT','GB','DSS', 'GBDSS','NegCtrl'))
 ```
 
 ## 2. R-based analysis of microbiome data
