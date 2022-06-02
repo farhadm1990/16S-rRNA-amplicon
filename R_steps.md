@@ -55,10 +55,39 @@ for(i in seq_len(ncol(sample_data(pst)))) {
 #Optional: renaming the treatment levels
 iflese(sample_data(pst)$treatment == "ct", "CT", ifelse(sample_data(pst)$treatment == "gb", "GB",
 ifelse(sample_data(pst)$treatment == "dss", "DSS", ifelse(sample_data(pst)$treatment == "gbdss", "GBDSS", "NegCtrl"))
+#NegCtrl marks the negative samples.
 
 # Releveling the treatment factrs
 
 sample_data(pst)$treatment<-factor(sample_data(pst)$treatment, levels = c('CT','GB','DSS', 'GBDSS','NegCtrl'))
+```
+## 2. Preprocessing and cleaning up the dataset
+
+# Decontamination of the reads by `Decontam` package:
+It is based on the reads in the negative samples (here we have 5 neg samples) according to their prevalenc (not frequency), which is presence/absence of ASVs across samples.
+The default threshold for a contaminant is that it reaches a probability of 0.1 in the statistical test being performed. In another word, an ASV should be present in at least 10% of the samples to pass the filter.  We can also try it with 0.5.
+
+```R
+library("decontam")
+
+#First make a vector containing the name of the negative samples. 
+neg_cont<-c("KDN1NK","KDN1N","KDN2N","KDNK","KDN3N")
+
+contamPrev01 = isContaminant(pst, method = "prevalence", neg = "is.neg", threshold = 0.1)
+contamPrev05 = isContaminant(pst, method = "prevalence", neg = "is.neg", threshold = 0.5)
+```
+
+Now you can extract the ID of the contaminant ASVs and remove the reads correlated to them.
+
+```R 
+contamASV = contamPrev01[contamPrev01$contaminant==TRUE, ] %>% rownames
+#contamPrev05[contamPrev05$contaminant==TRUE, ]#this one is a bit strict!
+
+#note that not all ASVs are contams (e.g. Escherichia, Pseudomonas, Corynebacterium) so we need to check them with the taxa
+tax_table(pst)[rownames(tax_table(pst))%in%contamASV,]
+
+#removing the contaminant ASVs from our phyloseq object
+pst <- subset_taxa(pst, taxa_names(pst)!=contamASV)
 ```
 
 ## 2. R-based analysis of microbiome data
