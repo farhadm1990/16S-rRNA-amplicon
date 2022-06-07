@@ -40,6 +40,28 @@ phy_tree(pst)     #To call the phylogenetic tree
 refseq(pst)       #To call the representative sequences for each ASV
 sample_data(pst)  #To call the metadata
 ```
+
+```R
+otu_table(pst)
+```
+![alt text](https://github.com/farhadm1990/Microbiome_analysis/blob/main/Pix/ASV%20table%20in%20R.PNG)
+
+```R
+tax_table(pst)
+```
+![alt text](https://github.com/farhadm1990/Microbiome_analysis/blob/main/Pix/taxa%20table%20in%20R.PNG)
+
+```R
+sample_data(pst)
+```
+![alt text](https://github.com/farhadm1990/Microbiome_analysis/blob/main/Pix/Metadata%20in%20R.PNG)
+
+```R
+refseq(pst)
+```
+![alt text](https://github.com/farhadm1990/Microbiome_analysis/blob/main/Pix/Refseqs%20in%20R.PNG)
+
+
 You can also convert the class of each variable in your metadata by the following code:
 
 ```R
