@@ -96,6 +96,7 @@ ifelse(sample_data(pst)$treatment == "dss", "DSS", ifelse(sample_data(pst)$treat
 
 sample_data(pst)$treatment<-factor(sample_data(pst)$treatment, levels = c('CT','GB','DSS', 'GBDSS','NegCtrl'))
 ```
+
 ## 2. Preprocessing and cleaning up the dataset
 
 ### Decontamination of the reads by `Decontam` package: unsupervised
@@ -141,11 +142,11 @@ pst <- subset_taxa(pst, !is.na(Phylum) & !Phylum %in% c("", "uncharacterized", "
 ```R
 #monitoring the number of the samples in which the prevalence of a taxon is at least one
 prevdf <- apply(otu_table(pst),ifelse(taxa_are_rows(pst), 1, 2), function(x){sum(x>0)})
-prevdf <-data.frame(ASVprev = prevdf, 
-                   TaxaAbund = taxa_sums(pst),
+prevdf <-data.frame(ASVprev = prevdf,           #Number of the samples containing a given ASV; this shows how many samples each ASV occured.
+                   TaxaAbund = taxa_sums(pst),  #The abundance of each ASV across all samples. 
                    tax_table(pst))
 head(prevdf)
-#Find out the phyla that are of mostly low-prevalence features by computing the total and average prev of features in Phylum
+#Find out the phyla that are of mostly low-prevalence features by computing the total and average prev of features in each Phylum
 plyr::ddply(prevdf, "Phylum", function(df){cbind(means = round(mean(df$ASVprev), 2), sums = round(sum(df$ASVprev),
                                          2))}) %>% mutate(sanity = ifelse(means == sums, "TRUE", "FALSE"))
 #in the phylum level, Deinococcota and Myxococcota appeared only in one percent of samples and therefore, they will be filtered from the dataset
@@ -153,6 +154,22 @@ junkphyl = c("Myxococcota", "Deinococcota")
 pst = subset_taxa(pst, !Phylum %in% junkphyl)
 
 ```
+
+You could also do another level of filtering based on the prevalence/apearance of ASVs in a certain number of samples, e.g. 5 samples at least.
+
+```R
+
+```
+
+
+Since in this study we are only interested in the changes of bacteria depending on our environmental factors, we remove all non-bacterial ASVs in the Kingdom level.
+
+```R
+#now, we only keep the bacterial kingdom and remove the rest.
+pst = subset_taxa(pst, Kingdom == "d__Bacteria")
+pst
+```
+
 
 ## 2. R-based analysis of microbiome data
 When we imported all the artifacts from **qiime2** into **R**, we can use different packages and costume functions to render different *preprocessing* and *analitycal* steps.
