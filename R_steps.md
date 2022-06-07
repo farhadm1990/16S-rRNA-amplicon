@@ -46,7 +46,7 @@ otu_table(pst)
 ```
 ![alt text](https://github.com/farhadm1990/Microbiome_analysis/blob/main/Pix/ASV%20table%20in%20R.PNG)
 > Figure 1. ASV count table. Rows are ASV ids and columns are the Sample IDs.
-
+> 
 
 
 ```R
@@ -54,6 +54,7 @@ tax_table(pst)
 ```
 ![alt text](https://github.com/farhadm1990/Microbiome_analysis/blob/main/Pix/taxa%20table%20in%20R.PNG)
 > Figure 2. Taxonomy table. Rows are ASV IDs and columns are taxonomic levels.
+> 
 
 
 
@@ -62,6 +63,7 @@ sample_data(pst)
 ```
 ![alt text](https://github.com/farhadm1990/Microbiome_analysis/blob/main/Pix/Metadata%20in%20R.PNG)
 > Figure 3. Metadata table. Rows are Sample IDs and columns are the variables.
+> 
 
 
 
@@ -70,6 +72,7 @@ refseq(pst)
 ```
 ![alt text](https://github.com/farhadm1990/Microbiome_analysis/blob/main/Pix/Refseqs%20in%20R.PNG)
 > Figure 4. Reference/representative sequence table. Width seq is for the neucleotide counts and names are ASV IDs.
+> 
 
 
 You can also convert the class of each variable in your metadata by the following code:
