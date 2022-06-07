@@ -155,10 +155,27 @@ pst = subset_taxa(pst, !Phylum %in% junkphyl)
 
 ```
 
-You could also do another level of filtering based on the prevalence/apearance of ASVs in a certain number of samples, e.g. 5 samples at least.
+You could also do another level of filtering based on the prevalence/apearance of ASVs in a certain number of samples, e.g. 1 sample.
+Warning: this might influence your alpha diversity measures, i.e. might cause underestimation of the changes as for instance richness is calculated based on the number of singletones in each sample. 
 
 ```R
+#Filtering ASVs based on their prevalence threshold of 5 samples accross the samples. This means that each ASV should have appeared at least in 5 samples to be kept.
+prevdf <- apply(otu_table(pst),ifelse(taxa_are_rows(pst), 1, 2), function(x){sum(x>0)}) #this shows the prevalence (if an ASV occured or not) of an ASV across the samples, therefore the range is from 1-108
 
+table_count <- apply(otu_table(pst), 2, function(x) ifelse(x>0, 1, 0)) #this also gives the same results but with the count tables.
+suspected_ASV = table_count[which((rowSums(table_count)/ncol(table_count))*100 < 5.4),] %>% rownames     #5.4 % of the samples equals 5 sample, since we have 108 samples here.
+
+            
+# you can derive the exact same results by the build-in phyloseq function 
+# Prevalence: in more than 5 samples
+
+TaxaTokeep <- genefilter_sample(pst.no.single, function(x) x>0, 5)                     
+
+#let's remove these below-5 sample ASVs from the dataset
+pst.prev = subset_taxa(pst, !taxa_names(pst)%in%suspected_ASV)
+#pst.prev = prune_taxa(TaxaTokeep, pst.no.single)  # you could also use this code for filtering     
+pst.prev   
+pst.ancom=pst.no.single     
 ```
 
 
