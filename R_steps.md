@@ -631,7 +631,7 @@ asv.dss <- round(otu_table(dss.ps)[apply(otu_table(dss.ps), 1, function(x) any(x
 asv.gbdss <- round(otu_table(gbdss.ps)[apply(otu_table(gbdss.ps), 1, function(x) any(x > 0)),],0)  %>% rownames()
                                              
 #First making a simple venn diagram to see the actual counts and unions of ASVs for each treatment
-#gplots::venn(data =list(asv.ct, asv.gb, asv.dss, asv.gbdss)) 
+gplots::venn(data =list(asv.ct, asv.gb, asv.dss, asv.gbdss)) 
 
 #Then we use the numbers to make a prettier venn diagram 
 ven.diag = draw.quad.venn(col = "white", alpha = 0.75, area1 = 0+1+0+0+10+0+0+2, area2 = 1+1+0+0+10+1+2+0, area3 = 0+0+0+10+0+1+0+0, fontface = "bold",
