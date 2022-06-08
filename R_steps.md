@@ -74,6 +74,15 @@ refseq(pst)
 > Figure 4. Reference/representative sequence table. Width seq is for the neucleotide counts and names are ASV IDs.
 > 
 
+You can extract the sequences into you local directory as `fasta` format.
+
+```R
+
+#Using writeXStringSet
+writeXStringSet(refseq(pst), "./dss.fasta", append=FALSE,
+                compress=FALSE, compression_level=NA, format="fasta")
+```
+
 
 You can also convert the class of each variable in your metadata by the following code:
 
@@ -87,12 +96,17 @@ for(i in seq_len(ncol(sample_data(pst)))) {
  } 
 }
 
-#Optional: renaming the treatment levels
+#Optional: renaming the variable levels
+#Treatment
 iflese(sample_data(pst)$treatment == "ct", "CT", ifelse(sample_data(pst)$treatment == "gb", "GB",
-ifelse(sample_data(pst)$treatment == "dss", "DSS", ifelse(sample_data(pst)$treatment == "gbdss", "GBDSS", "NegCtrl"))
-#NegCtrl marks the negative samples.
+ifelse(sample_data(pst)$treatment == "dss", "DSS", ifelse(sample_data(pst)$treatment == "gbdss", "GBDSS", "NegCtrl")) #NegCtrl marks the negative samples.
 
-# Releveling the treatment factrs
+#Segment
+iflese(sample_data(pst)$sample_type == "digesta_25", "Proximal", ifelse(sample_data(pst)$sample_type == "digesta_50", "Midcolon",
+ifelse(sample_data(pst)$sample_type == "digesta_75", "Distal", "Feces")))
+
+
+# Releveling the treatment factors
 
 sample_data(pst)$treatment<-factor(sample_data(pst)$treatment, levels = c('CT','GB','DSS', 'GBDSS','NegCtrl'))
 ```
@@ -243,7 +257,7 @@ single.test[[1]]
 ```
 
 ![alt text](https://github.com/farhadm1990/Microbiome_analysis/blob/main/Pix/Singletone_plot.PNG)
-> Barplot of ASV relative abundance with their frequency across ASV table. The red bar represents the count of singletones.
+> Figure 5. Barplot of ASV relative abundance with their frequency across ASV table. The red bar represents the count of singletones.
 > 
 
 #### Taxonomic filtering based on minimum threshold abundance 
@@ -282,11 +296,14 @@ ps_rar_curve <- ggrarecurve(obj = pst,
 
 ps_rar_curve
 ```
+![alt text](https://github.com/farhadm1990/Microbiome_analysis/blob/main/Pix/rarefaction%20curve.PNG)
+> Figure 6. Rarefaction curve for richness and Shannon index. You can see that around 17000 sampling depth the curves reach platue.
+
 
 With the following code you can perform rarefaction:
 
 ```R
-pst_rar_repF <- phyloseq::rarefy_even_depth(pst, sample.size = 17000, replace = F) #without replacement
+pst_rar_repF <- phyloseq::rarefy_even_depth(pst, sample.size = 17000, replace = F) #without replacement and 17000 sampling depth
 
 ```
 
