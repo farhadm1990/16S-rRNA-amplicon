@@ -297,7 +297,7 @@ ps_rar_curve <- ggrarecurve(obj = pst,
 ps_rar_curve
 ```
 ![alt text](https://github.com/farhadm1990/Microbiome_analysis/blob/main/Pix/rarefaction%20curve.PNG)
-> Figure 6. Rarefaction curve for richness and Shannon index. You can see that around 17000 sampling depth the curves reach platue.
+> Figure 6. Rarefaction curve for richness and Shannon indices. You can see that around 17000 sampling depth the curves reach platue.
 
 
 With the following code you can perform rarefaction:
@@ -305,6 +305,26 @@ With the following code you can perform rarefaction:
 ```R
 pst_rar_repF <- phyloseq::rarefy_even_depth(pst, sample.size = 17000, replace = F) #without replacement and 17000 sampling depth
 
+```
+
+### Converting relative reads from relative abundance to absolute abundance
+
+For each sample we extracted total load of 16S rRNA copy-number genes by perfomring a qPCR and we use them to convert the relative abundnce counts into aboslute abundance. Since we only did that for samples from proximal, distal and feces, we prune our samples to these types. Then we convert the counts into relative abundance and multiply them to the total load of 16S rRNA genes for each correspondent samples. 
+
+```R
+#Prunning the samples
+
+pst.qPCR = prune_samples(sample_data(pst.rar.clean)$sample_type %in% c("Proximal", "Distal", "Feces"), pst_rar_repF) 
+
+# Converting the observed counts to relative abundant.
+pst.qPCR.relab <- transform_sample_counts(physeq = pst.qPCR, fun = function(x) x/sum(x))
+
+ # Normalizing the counts into their absolute abundance
+pst.abs.rel = t(otu_table(pst.qPCR.relab)) * sample_data(pst.qPCR)$copy_number
+pst.abs.rel = t(pst.abs.rel)                                          
+pst.abs.rel = apply(pst.abs.rel, 2, function(x) round(x))
+
+ otu_table(pst.qPCR) <- otu_table(pst.abs.rel, taxa_are_rows = TRUE) 
 ```
 
 ## 2. R-based analysis of microbiome data
