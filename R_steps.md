@@ -74,7 +74,7 @@ refseq(pst)
 > Figure 4. Reference/representative sequence table. Width seq is for the neucleotide counts and names are ASV IDs.
 > 
 
-You can extract the sequences into you local directory as `fasta` format.
+You can extract the sequences into your local directory as `fasta` format.
 
 ```R
 
