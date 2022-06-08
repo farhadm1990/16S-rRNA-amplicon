@@ -307,7 +307,7 @@ pst_rar_repF <- phyloseq::rarefy_even_depth(pst, sample.size = 17000, replace = 
 
 ```
 
-### Converting relative reads from relative abundance to absolute abundance
+### Converting reads from relative abundance to absolute abundance
 
 For each sample we extracted total load of 16S rRNA copy-number genes by perfomring a qPCR and we use them to convert the relative abundnce counts into aboslute abundance. Since we only did that for samples from proximal, distal and feces, we prune our samples to these types. Then we convert the counts into relative abundance and multiply them to the total load of 16S rRNA genes for each correspondent samples. 
 
@@ -324,8 +324,48 @@ pst.abs.rel = t(otu_table(pst.qPCR.relab)) * sample_data(pst.qPCR)$copy_number
 pst.abs.rel = t(pst.abs.rel)                                          
 pst.abs.rel = apply(pst.abs.rel, 2, function(x) round(x))
 
- otu_table(pst.qPCR) <- otu_table(pst.abs.rel, taxa_are_rows = TRUE) 
+otu_table(pst.qPCR) <- otu_table(pst.abs.rel, taxa_are_rows = TRUE) 
+
+# You can also make a copy of your data as log-transformed
+
+pst.qPCR.log = transform_sample_counts(pst.qPCR, function(x) {log(x+1)})
 ```
 
-## 2. R-based analysis of microbiome data
-When we imported all the artifacts from **qiime2** into **R**, we can use different packages and costume functions to render different *preprocessing* and *analitycal* steps.
+## 3. Alpha diversity
+
+Estimating alpha diversity, diversity within sample, using `estimate_richness` function of `phyloseq` package.
+
+```R
+
+#Calculating the alpha diversity indexes for qPCR data:
+#Richness is the number of observed ASVs
+ 
+Chao1 =estimate_richness(pst, split = TRUE, measures = "Chao1") #for richness, we don't use rarefied table
+
+#Diversity: takes both observed and evenness into account in a  way that it shows that if the community has similar abundances. Therefore, a community with a high diversity has a lot of species with similar abundances. A community with many species but only a single dominant one has a lower diversity. Shannon is an index for diversity measurement and it can be 4 or hihger in value. 
+Shannon = estimate_richness(pst.qPCR, split = TRUE, measures = "Shannon")
+
+#Evenness: it is the probability of if two bacteria belong to the same speices. In other word, how even the abundance of bacteria are. since it is probabilility, the value for evenness index, e.g. Pielou, is always between 0-1.
+normcount = apply(otu_table(pst.qPCR), 2, function(x) x/sum(x))#we need a relative abundance count to measure Pielou
+ASVcount = colSums(normcount != 0)                  
+Pielou = Shannon / log(ASVcount)     #pielou corrects the shannon index for speices number             
+Simpson = estimate_richness(pst.qPCR, split = TRUE, measures = "Simpson")                  
+
+#Phylogenetic distance                   
+library(picante)
+FaithPD = pd(t(otu_table(pst.qPCR)), tree = phy_tree(pst.qPCR), include.root = F)$PD
+                  
+#adding the indexes to the metadatas              
+sample_data(pst.qPCR) <- data.frame(sample_data(pst.qPCR), Chao1=Chao1[[1]],
+                                    Shannon = Shannon$Shannon,  FaithPD = FaithPD)   
+sample_data(pst.qPCR)   
+
+#Adding them to the sample_data with the following method causes a trouble, which it won't be returend by sample_data anymore.          
+#sample_data(pst.qPCR)$Chao1 <- Chao1$Chao1
+#sample_data(pst.qPCR)$Shannon <- Shannon
+#sample_data(pst.qPCR)$FaithPd <- FaithPD
+                  
+#sample_data(pst.qPCR) <- data.frame(as.matrix(sample_data(pst.qPCR)))
+
+
+```
