@@ -1,6 +1,6 @@
 # ![alt text](https://github.com/farhadm1990/Microbiome_analysis/blob/main/Pix/Cover.jpg)
 
-# Microbiome Analysis
+# <span style="color: green"> Microbiome Analysis </span> 
 
 ## Analysis of (gut) microbiome in **Qiime2** and **R**.
 
