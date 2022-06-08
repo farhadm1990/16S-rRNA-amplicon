@@ -179,41 +179,43 @@ pst.ancom=pst.no.single
 ```
 ### Removing singletones based on abundance
 
-Singletones are those ASVs that occure only once across all samples. Therefore, their relative abundance `(ASV/sum(ASVs))' equals to `1`. Since we have 4 different gourps of treatments, an ASV with appearance in only one sample cannot be due to biological differences, otherwise we would expect it to appear in at least one group of treatments. If you have done the prevoius 'prevalence filteing' step, there must be no singletones left in the dataset. However, removing singletones are not recommended for estimation of beta diversity metrics, especially richness as it is based on singletones and doubletones. While, you can remove them for differentially abundance analysis to get a clear signal from the dataset.
+Singletones are those ASVs that occure only once across all samples. Therefore, their relative abundance `[ASV/sum(ASVs)]` equals to `1`. Since we have 4 different gourps of treatments, an ASV with appearance in only one sample cannot be due to biological differences, otherwise we would expect it to appear in at least one group of treatments. If you have done the prevoius 'prevalence filteing' step, there must be no singletones left in the dataset. However, removing singletones are not recommended for estimation of beta diversity metrics, especially richness as it is based on singletones and doubletones. While, you can remove them for differentially abundance analysis to get a clear signal from the dataset.
 
 First make a relative abundance from the ASV count table and see which ASVs occured only once with the following function. 
 
 ```R
-#a function to find singletones You need to be careful about this step!
+#A function to find singletones You need to be careful about this step!
 out.ASV = function (phyloseq, threshold =1, binwidth = 0.01) {
        
 #This function requires phyloseq, tidyverse and glue packages to be loaded. 
     
-    rel_abund = t(apply(otu_table(phyloseq), ifelse(taxa_are_rows(phyloseq), 1,2), function(x) x/sum(x)))#making the relative abundant table
-    names.single = t(apply(rel_abund, 1, function(x){ifelse(x == threshold, TRUE, ifelse(x == sum(x),
-                        TRUE, FALSE))})) %>% melt %>% filter(value == TRUE) %>% select(1) %>% pull  %>% unfactor()
-        
-                         
+                      rel_abund = t(apply(otu_table(phyloseq), ifelse(taxa_are_rows(phyloseq), 1,2), 
+                      function(x) x/sum(x))) #making the relative abundance table
+                      names.single = t(apply(rel_abund, 1, function(x){ifelse(x == threshold, TRUE, ifelse(x == sum(x),
+                      TRUE, FALSE))})) %>% melt %>% filter(value == TRUE) %>% select(1) %>% pull  %>% unfactor()
+                      single.ASV = rel_abund[rownames(rel_abund)%in%as.vector(names.single),]
+                      single.ASV[single.ASV == 0] <- NA # A seperate dataset for annotation of singletones on the barplot
+                        
                         if (length(names.single) == 0 ) {
                         print(glue("{length(names.single)} singletones detected in this dataset"))
-                        qplot.noSing = qplot(rel_abund, geom = "histogram", 
-                        binwidth = binwidth, color = rel_abund, main = "Frequency count of relative abundance") +
-                  xlab ("Relative abundance in samples") + ylab("Frequency")
+                        qplot.noSing = qplot(rel_abund, geom = "histogram", binwidth = binwidth, 
+                        color = rel_abund, main = "Frequency count of relative abundance") +
+                        xlab ("Relative abundance in samples") + ylab("Frequency")
                             
-                        return(structure(list(qplot.noSing, names.single)))
-                          
-                          
+                        
+                         return(structure(list(qplot.noSing, names.single))   )
+                            
                         } else {
-                          
-                          
-                  qplot.withSing = qplot(rel_abund, geom = "histogram", binwidth = 0.01, color = rel_abund, 
-                   main = "Frequency count of relative abundance with singletones") +
-                   geom_bar(aes(rel_abund[rownames(rel_abund)%in%names.single,]), fill = "red", alpha = 0.6, color = "red", width = 0.01)+
-                   xlab ("Relative abundance in samples") + ylab("Frequency") + 
-                   geom_label_repel(aes(x = 0.95, y =length(rel_abund)/10), label.padding =  unit(0.55, "lines"), label = "Singletones", color = "black")
+                                         
+                       qplot.withSing = qplot(rel_abund, geom = "histogram", binwidth = binwidth, color = rel_abund, 
+                       main = "Frequency count of relative abundance with singletones") +
+                       geom_bar(aes(single.ASV),  color = "red", width = binwidth)+
+                       xlab ("Relative abundance in samples") + ylab("Frequency") + 
+                       geom_label_repel(aes(x = 0.95, y =length(rel_abund)/10), 
+                       label.padding =  unit(0.55, "lines"), label = glue("{length(names.single)}\n Singletones"), color = "black")
                             
                    qplot.rmSing = qplot(rel_abund[!rownames(rel_abund) %in% names.single, ], geom = "histogram",
-                   binwidth = 0.01, main = "Frequency count of relative abundance without singletones") +
+                   binwidth = binwidth, main = "Frequency count of relative abundance without singletones") +
                    xlab ("Relative abundance in samples") + ylab("Frequency")
                             
                     print(glue('{length(names.single)} singletones detected in the dataset'))
@@ -232,6 +234,15 @@ pst.no.single = subset_taxa(pst, !taxa_names(pst)%in% singletones)
 pst.ancom = pst.no.single
 ```
 The outcome of this function is a barplot showing the relative abundance of taxa on `x` axis and their counts across the count table on the `y` axis. If there is not singletones, the barplot should show no counts on relative abundance of `1` on `x` axis. 
+
+
+```R
+out.test[[1]]
+```
+
+![alt text](https://github.com/farhadm1990/Microbiome_analysis/blob/main/Pix/Singletone_plot.PNG)
+> Barplot of ASV relative abundance with their frequency across ASV table. The red bar represents the count of singletones.
+> 
 
 
 Since in this study we are only interested in the changes of bacteria depending on our environmental factors, we remove all non-bacterial ASVs in the Kingdom level.
