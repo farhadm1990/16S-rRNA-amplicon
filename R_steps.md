@@ -355,17 +355,303 @@ Simpson = estimate_richness(pst.qPCR, split = TRUE, measures = "Simpson")
 library(picante)
 FaithPD = pd(t(otu_table(pst.qPCR)), tree = phy_tree(pst.qPCR), include.root = F)$PD
                   
-#adding the indexes to the metadatas              
+#Adding the indexes to the metadatas              
 sample_data(pst.qPCR) <- data.frame(sample_data(pst.qPCR), Chao1=Chao1[[1]],
                                     Shannon = Shannon$Shannon,  FaithPD = FaithPD)   
 sample_data(pst.qPCR)   
 
-#Adding them to the sample_data with the following method causes a trouble, which it won't be returend by sample_data anymore.          
-#sample_data(pst.qPCR)$Chao1 <- Chao1$Chao1
-#sample_data(pst.qPCR)$Shannon <- Shannon
-#sample_data(pst.qPCR)$FaithPd <- FaithPD
-                  
-#sample_data(pst.qPCR) <- data.frame(as.matrix(sample_data(pst.qPCR)))
 
+```
+
+
+## Creating a stacked barplot for visualizating the compositon of microbiota in different taxonomic level.
+
+Since we can create stacked barplot for different taxon levels and the ASV IDs are rather complicated and long to read, you can use the following function to agglomerate your taxa into a certain level by giving them the level name as the row names.
+
+```R
+#A function to create unique names for each ASV. It removes any NA in Order level then attempts to use the name of one level higher taxa for those 
+#who have similar names, e.g. uncultured_bacterium
+
+gloomer = function(ps = data, taxa_level = taxa_level, NArm = "TRUE"){
+    rank.names = c('Kingdom','Phylum', 'Class', 'Order', 'Family', 'Genus', 'Species')
+    
+
+#====================Sometimes in genus level, we might have multiple uncultured organisms, which if we want to make unique out of them for the species level it won't work====
+    #since adding uncultured to uncultered is sill duplication. therefore if the taxa_level is set to species we first make a unique genus and then we go further to the speices===#
+
+#Removing unculured Family
+ps = subset_taxa(ps, !Family %in% c("uncultured", "NA"))
+    
+if(taxa_level == "Species") {
+ps = subset_taxa(ps, !Genus %in% NA)#we remove genus tagged NA
+tax_table(ps)[, taxa_level] <- ifelse(tax_table(ps)[, taxa_level] %in% NA, paste0("unknown"), paste(tax_table(ps)[, taxa_level]))#convert NA in species into unknown
+    
+  physeq = tax_glom(physeq = ps, taxrank = taxa_level, NArm = NArm)
+    taxdat = tax_table(physeq)[, seq_along(rank.names[1:which(rank.names == taxa_level)])]
+    
+   taxdat = taxdat[complete.cases(taxdat),] %>% as.data.frame
+    otudat = otu_table(physeq)
+    
+#first take care of the uncultured genus
+taxdat[,6] = ifelse(taxdat[,6] == "uncultured", 
+       paste0(taxdat[ , length(rank.names[1:which(rank.names=="Genus")])-1], "_", taxdat[,6]), paste(taxdat[,6]))
+
+spec1 = taxdat[, taxa_level] %>% as.vector
+spec2  = taxdat[, taxa_level] %>% as.vector
+
+    uni  = matrix(NA, ncol = length(spec2), nrow = length(spec1))
+    for(i in seq_along(spec1)){
+        for(j in seq_along(spec2)){
+    uni[i, j] = ifelse(spec1[i] == spec2[j] , "TRUE", "FALSE")
+    }
+        }
+
+rownames(uni) <-spec1
+colnames(uni) <- spec2   
+uni[upper.tri(uni, diag = TRUE)] = 0 #get rid of diagonals and upper triangle
+
+duplis = uni %>% melt %>% filter(value == "TRUE") 
+
+if(dim(duplis)[[1]] > 0) {
+duplis = uni %>% melt %>% filter(value == "TRUE") %>% dplyr::select(1) %>% unique() %>% unlist %>% as.vector
+taxdat = taxdat %>% mutate( uni= ifelse(taxdat[, taxa_level] %in% duplis, 
+                    paste0(taxdat[,length(rank.names[1:which(rank.names==taxa_level)])-1], "_", taxdat[,taxa_level]), taxdat[,taxa_level]))
+
+    taxdat[, taxa_level] = taxdat[, "uni"]
+taxdat[, "uni"] <- NULL
+taxdat <- as.matrix(taxdat)   
+rownames(otudat) <- taxdat[rownames(taxdat) %in% rownames(otudat), taxa_level]
+rownames(taxdat) <- taxdat[, taxa_level]
+taxdat <- tax_table(taxdat)
+taxa_names(physeq) <- taxa_names(taxdat)
+tax_table(physeq) <- taxdat
+otu_table(physeq) <- otudat
+    
+} else {
+    
+taxdat <- as.matrix(taxdat) 
+taxdat <- tax_table(taxdat)
+rownames(otudat) <- taxdat[rownames(taxdat) %in% rownames(otudat), taxa_level]
+rownames(taxdat) <- taxdat[, taxa_level]
+taxdat <- tax_table(taxdat)
+taxa_names(physeq) <- taxa_names(taxdat)
+tax_table(physeq) <- taxdat
+otu_table(physeq) <- otudat
+    
+}
+#ps = phyloseq(otu_table(otudat, taxa_are_rows = T), tax_table(as.matrix(taxdat)), sample_data(physeq))
+
+    
+    
+#==========================================# 
+} else if (taxa_level == "Genus") {
+    
+    physeq = tax_glom(physeq = ps, taxrank = taxa_level, NArm = NArm)
+    taxdat = tax_table(physeq)[, seq_along(rank.names[1:which(rank.names == taxa_level)])]
+    
+   taxdat = taxdat[complete.cases(taxdat),] %>% as.data.frame
+    otudat = otu_table(physeq)
+    
+# take care of the uncultured genus
+taxdat[,6] = ifelse(taxdat[,6] == "uncultured", 
+       paste(taxdat[ , length(rank.names[1:which(rank.names=="Genus")])-1], "_", taxdat[,6]), paste(taxdat[,6]))
+
+  
+rownames(otudat) <- taxdat[rownames(taxdat) %in% rownames(otudat), taxa_level]
+rownames(taxdat) <- taxdat[taxdat[,taxa_level] %in% rownames(otudat), taxa_level]
+taxdat <- as.matrix(taxdat) 
+taxdat <- tax_table(taxdat)
+taxa_names(physeq) <- taxa_names(taxdat)
+tax_table(physeq) <- taxdat
+otu_table(physeq) <- otudat
+#ps = phyloseq(otu_table(otudat, taxa_are_rows = T), tax_table(as.matrix(taxdat)), sample_data(physeq))
+ 
+    
+    
+} else {
+    
+    
+physeq = tax_glom(physeq = ps, taxrank = taxa_level, NArm = TRUE)
+    taxdat = tax_table(physeq)[, seq_along(rank.names[1:which(rank.names == taxa_level)])]
+    
+taxdat = taxdat[complete.cases(taxdat),] %>% as.data.frame
+otudat = otu_table(physeq)
+    
+spec1 = taxdat[, taxa_level] %>% as.vector
+spec2  = taxdat[, taxa_level] %>% as.vector
+
+    uni  = matrix(NA, ncol = length(spec2), nrow = length(spec1))
+    for(i in seq_along(spec1)){
+        for(j in seq_along(spec2)){
+    uni[i, j] = ifelse(spec1[i] == spec2[j] , "TRUE", "FALSE")
+    }
+        }
+
+rownames(uni) <-spec1
+colnames(uni) <- spec2   
+uni[upper.tri(uni, diag = TRUE)] = 0 #get rid of diagonals and upper triangle
+
+duplis = uni %>% reshape2::melt() %>% filter(value == "TRUE")
+
+if(dim(duplis)[[1]] > 0){#if there is not duplications, we can simply use the taxa names as the row name
+    
+    duplis = uni %>% reshape2::melt %>% filter(value == "TRUE") %>% dplyr::select(1)%>% unique() %>% unlist %>% as.vector
+taxdat = taxdat %>% mutate( uni= ifelse(taxdat[, taxa_level] %in% duplis, 
+                    paste(taxdat[,length(rank.names[1:which(rank.names==taxa_level)])-1], "_", taxdat[,taxa_level]), taxdat[,taxa_level]))
+    
+taxdat[, taxa_level] = taxdat[, "uni"]
+taxdat[, "uni"] <- NULL
+taxdat <- as.matrix(taxdat)   
+rownames(otudat) <- taxdat[rownames(taxdat) %in% rownames(otudat), taxa_level]
+rownames(taxdat) <- taxdat[, taxa_level]
+taxdat <- tax_table(taxdat)
+taxa_names(physeq) <- taxa_names(taxdat)
+tax_table(physeq) <- taxdat
+otu_table(physeq) <- otudat
+} else {
+
+taxdat <- as.matrix(taxdat) 
+taxdat <- tax_table(taxdat)
+rownames(otudat) <- taxdat[rownames(taxdat) %in% rownames(otudat), taxa_level]
+rownames(taxdat) <- taxdat[, taxa_level]
+taxdat <- tax_table(taxdat)
+taxa_names(physeq) <- taxa_names(taxdat)
+tax_table(physeq) <- taxdat
+otu_table(physeq) <- otudat
+}
+#ps = phyloseq(otu_table(otudat, taxa_are_rows = T), tax_table(as.matrix(taxdat)), sample_data(physeq))
+ 
+
+}
+return(physeq) 
+    }
+    
+ ```
+ 
+ Now we can use the `gloomer` function to agglomerate our reads to `Phylum` level and create the stacked barplot for the absolute counts.
+ 
+```R
+#Making a costumized color list for the phylum
+phylcol=c('coral4', "darkorange",'antiquewhite4','gold', 'cornflowerblue', 'plum4',
+          'darkgoldenrod3','aquamarine4', 'cadetblue2', 'darkgreen', 'mediumseagreen', 'red','Gray',
+        'steelblue2','darkmagenta')
+
+#Agglomeration
+glom.phyl <- gloomer(pst.qPCR, "Phylum", NArm = TRUE)
+
+#Merging counts for treatments
+trans.ps1 <- merge_samples(glom.phyl, "treatment") 
+
+                                     
+#Barplot                                    
+plot_bar(trans.ps1, fill="Phylum", x = "treatment2") + scale_fill_manual(values = phylcol) + 
+    xlab("Treatments") + ylab(" 16S rRNA gene copies per g") + 
+scale_y_continuous(labels = function(x) format(x, scientific = TRUE))+#to print the scale in scientific notation
+            theme_bw() + 
+            theme(text = element_text(size =15, face = "bold"))
+                   
+ggsave("./barplot_phylum_absolute.jpeg", device = "jpeg", dpi = 300, width = 7) 
+```
+ 
+![alt text](https://github.com/farhadm1990/Microbiome_analysis/blob/main/Pix/barplot_phylum_absolute.jpeg) 
+ > Figure 7. Stacked barplot for different phyla in 4 treatment groups.
+
+## Creating a venn diagram for shared taxa between different treatments.
+
+### Species level
+
+```R
+library(eulerr)
+library(gplots)
+library(VennDiagram)
+
+spec.pst <- gloomer(pst.qPCR, taxa_level = "Species", NArm = TRUE)
+
+#making a subset of dataset for different treatments
+ct.ps <- subset_samples(spec.pst, treatment == "CT")
+gb.ps <- subset_samples(spec.pst, treatment == "GB")
+dss.ps <- subset_samples(spec.pst, treatment == "DSS")
+gbdss.ps <- subset_samples(spec.pst, treatment == "GBDSS")
+
+#filtering data for counts bigger than 0
+asv.ct <- round(otu_table(ct.ps)[apply(otu_table(ct.ps), 1, function(x) any(x > 0)),],0) %>% rownames()
+                                      
+asv.gb <- round(otu_table(gb.ps)[apply(otu_table(gb.ps), 1, function(x) any(x > 0)),],0)%>% rownames
+                                       
+asv.dss <- round(otu_table(dss.ps)[apply(otu_table(dss.ps), 1, function(x) any(x > 0)),],0) %>% rownames()
+                                        
+asv.gbdss <- round(otu_table(gbdss.ps)[apply(otu_table(gbdss.ps), 1, function(x) any(x > 0)),],0)  %>% rownames()
+                                             
+#First making a simple venn diagram to see the actual counts and unions of ASVs for each treatment
+gplots::venn(data =list(asv.ct, asv.gb, asv.dss, asv.gbdss)) 
+
+#Then we use the numbers to make a prettier venn diagram 
+ven.diag = draw.quad.venn(col = "white", alpha = 0.75, area1 = 0+23+3+2+3+167+0+17, area2 = 23+1+3+1+167+16+17+1, area3 = 2+3+167+3+16+1+1+14, area4 = 3+0+17+167+1+16+14+1,
+                          fontface = "bold", 
+               n12 = 23+3+167+17, n13 = 2+3+3+167, n14 = 3+0+167+17, n1234 = 167, n123 = 3+167, n124 = 167+17, n134 =3+167,
+              n234 = 167+16, n23=3+1+167+16, n24=167+16+17+1, n34 = 3+167+16+14, category = c("CT", "GB", "DSS", "GBDSS"), 
+              fill = c("deeppink1", "deepskyblue", "darkorange",  "springgreen4"))
+ggsave(plot = ven.diag, "./venn.taxa.species.jpeg", device = "jpeg", dpi = 500)
+
+```
+![alt text](https://github.com/farhadm1990/Microbiome_analysis/blob/main/Pix/venn.taxa.species.jpeg)
+> Figure 8. Venn diagram of shared species between treatments.
+
+
+### Phylum level
+
+```R
+#Phylum level
+phyl.pst <- gloomer(pst.qPCR, taxa_level = "Phylum", NArm = TRUE)
+
+#making a dataset for different treatments
+ct.ps <- subset_samples(phyl.pst, treatment == "CT")
+gb.ps <- subset_samples(phyl.pst, treatment == "GB")
+dss.ps <- subset_samples(phyl.pst, treatment == "DSS")
+gbdss.ps <- subset_samples(phyl.pst, treatment == "GBDSS")
+
+#filtering data for counts bigger than 0
+asv.ct <- round(otu_table(ct.ps)[apply(otu_table(ct.ps), 1, function(x) any(x > 0)),],0) %>% rownames()
+                                      
+asv.gb <- round(otu_table(gb.ps)[apply(otu_table(gb.ps), 1, function(x) any(x > 0)),],0)%>% rownames
+                                       
+asv.dss <- round(otu_table(dss.ps)[apply(otu_table(dss.ps), 1, function(x) any(x > 0)),],0) %>% rownames()
+                                        
+asv.gbdss <- round(otu_table(gbdss.ps)[apply(otu_table(gbdss.ps), 1, function(x) any(x > 0)),],0)  %>% rownames()
+                                             
+#First making a simple venn diagram to see the actual counts and unions of ASVs for each treatment
+#gplots::venn(data =list(asv.ct, asv.gb, asv.dss, asv.gbdss)) 
+
+#Then we use the numbers to make a prettier venn diagram 
+ven.diag = draw.quad.venn(col = "white", alpha = 0.75, area1 = 0+1+0+0+10+0+0+2, area2 = 1+1+0+0+10+1+2+0, area3 = 0+0+0+10+0+1+0+0, fontface = "bold",
+                area4 = 0+0+10+2+1+0+0+0, 
+               n12 = 1+0+10+2, n13 = 0+0+0+10, n14 = 0+0+2+10, n1234 = 10, n123 = 0+10, n124 = 10+2, n134 =10+0,
+              n234 = 10+1, n23=0+0+10+1, n24=10+1+0+2, n34 = 0+10+1+0, category = c("CT", "GB", "DSS", "GBDSS"), 
+              fill = c("deeppink1", "deepskyblue", "darkorange",  "springgreen4"))
+ggsave(plot = ven.diag, "./venn.taxa.phylum.jpeg", device = "jpeg", dpi = 500)                                            
+```
+
+![alt text](https://github.com/farhadm1990/Microbiome_analysis/blob/main/Pix/venn.taxa.phylum.jpeg)
+> Figure 9. Venn diagram of shared phylum between treatments.
+
+
+
+
+Loading chemical data
+
+```R
+
+# I have added FaithPD to the dataset 
+chem.dat = read.table("./qPCR_metadat.tsv")
+sample_data(pst.qPCR) <- chem.dat
+
+
+
+for(i in seq_len(ncol(sample_data(pst.qPCR)))) {
+ if(!is.numeric(sample_data(pst.qPCR)[[i]]) && !is.logical(sample_data(pst.qPCR)[[i]])) {
+    sample_data(pst.qPCR)[[i]] = as.factor(sample_data(pst.qPCR)[[i]])  } else {
+     sample_data(pst.qPCR)[[i]]
+ } 
+}
 
 ```
