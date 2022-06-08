@@ -177,7 +177,9 @@ pst.prev = subset_taxa(pst, !taxa_names(pst)%in%suspected_ASV)
 pst.prev   
 pst.ancom=pst.no.single     
 ```
-### Removing singletones based on abundance
+### Removing singletones based on abundance: Supervised
+
+#### Mximum threshold abundance for ASVs in the count table
 
 Singletones are those ASVs that occure only once across all samples. Therefore, their relative abundance `[ASV/sum(ASVs)]` equals to `1`. Since we have 4 different gourps of treatments, an ASV with appearance in only one sample cannot be due to biological differences, otherwise we would expect it to appear in at least one group of treatments. If you have done the prevoius 'prevalence filteing' step, there must be no singletones left in the dataset. However, removing singletones are not recommended for estimation of beta diversity metrics, especially richness as it is based on singletones and doubletones. While, you can remove them for differentially abundance analysis to get a clear signal from the dataset.
 
@@ -231,7 +233,7 @@ singletones = single.test[[3]] #here you can extract the names of the singletone
 
 #Now you can remove the singletones from your pst file as follows:
 pst.no.single = subset_taxa(pst, !taxa_names(pst)%in% singletones)
-pst.ancom = pst.no.single
+pst = pst.no.single
 ```
 The outcome of this function is a barplot showing the relative abundance of taxa on `x` axis and their counts across the count table on the `y` axis. If there is not singletones, the barplot should show no counts on relative abundance of `1` on `x` axis. 
 
@@ -244,7 +246,16 @@ single.test[[1]]
 > Barplot of ASV relative abundance with their frequency across ASV table. The red bar represents the count of singletones.
 > 
 
+#### Taxonomic filtering based on minimum threshold abundance 
+Unlike the prevoius step, which we removed the ones with outmost abundance `1` or `100%`, here, we look for those with a minimum threshold abundacne, i.e. an ASV should occure in > 0.01% across all samples to pass the filter.
 
+```R
+# Abumdance: ASV > 0.01% overall abundance across all samples
+total.depth <- sum(otu_table(pst.prev))
+totAbuThreshold <- 1e-4 * total.depth
+pst <- prune_taxa(taxa_sums(pst.prev)>totAbuThreshold, pst.prev)
+
+```
 
 Since in this study we are only interested in the changes of bacteria depending on our environmental factors, we remove all non-bacterial ASVs in the Kingdom level.
 
@@ -254,6 +265,30 @@ pst = subset_taxa(pst, Kingdom == "d__Bacteria")
 pst
 ```
 
+### Rarefaction to an equal sampling depth
+
+Due to the technical reasons, Next Generation Sequencing (NGS) machines like Illumina do not usually run the squencing equally for all samples. This results in an unequal sampling/read depth among samples. Therefore, it is advisable to nurmalize the data to an equal sampling depth. Rarefaction is resampling without replacement, which has been widely used for this type of normalization. However, depending on different pipelines for denoising or clustering, e.g. be it DADA2 or Deblur, new concerns have risen in regard with rarefaction as it might partially affect our estimate of richness and consequently the biological interpertation of microbiota ([Bardenhorst et. al, 2022](https://www.sciencedirect.com/science/article/pii/S2001037021005456)).
+
+You can do rarefaction using `rarefy_even_depth` funciton from `rarefy_even_depth` package. But, in order to get an understanding on the sampling depth and consequent changes in the reads, you can create a rarefaction curve and choose the depth from which on you don't see an increase in the richness or diversity by increasing the reading depth. 
+
+```R
+library(MicrobiotaProcess)
+
+ps_rar_curve <- ggrarecurve(obj = pst, 
+                     indexNames = c("Observe", "Shannon"),
+                     chunks = 400, 
+                     theme(legend.spacing.y = unit(0.02, "cm"),
+                           legend.text = element_text(size = 6)), show.legend=F)
+
+ps_rar_curve
+```
+
+With the following code you can perform rarefaction:
+
+```R
+pst_rar_repF <- phyloseq::rarefy_even_depth(pst, sample.size = 17000, replace = F) #without replacement
+
+```
 
 ## 2. R-based analysis of microbiome data
 When we imported all the artifacts from **qiime2** into **R**, we can use different packages and costume functions to render different *preprocessing* and *analitycal* steps.
