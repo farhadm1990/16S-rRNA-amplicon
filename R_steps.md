@@ -1,5 +1,5 @@
 After we created all artifacts in qiime2 such as ASV table, repseqs, unrooted tree, taxonomy table and metadata, now we can bring them into R by usign qiime2_R package in R. 
-
+##
 ## 1. Importing unrooted tree, ASV table and repseqs with the metadata to R using qiime2R package into R. 
 Using qiime2R package, we can bring all generated artifacts from qiime2 into R and integrate them into one phyloseq object by qiime_to_phyloseq()
 
@@ -56,7 +56,7 @@ tax_table(pst)
 > Figure 2. Taxonomy table. Rows are ASV IDs and columns are taxonomic levels.
 > 
 
-
+##
 
 ```R
 sample_data(pst)
@@ -66,7 +66,7 @@ sample_data(pst)
 > 
 
 
-
+##
 ```R
 refseq(pst)
 ```
@@ -110,6 +110,7 @@ ifelse(sample_data(pst)$sample_type == "digesta_75", "Distal", "Feces")))
 
 sample_data(pst)$treatment<-factor(sample_data(pst)$treatment, levels = c('CT','GB','DSS', 'GBDSS','NegCtrl'))
 ```
+# 
 
 ## 2. Preprocessing and cleaning up the dataset
 
@@ -191,8 +192,9 @@ pst.prev = subset_taxa(pst, !taxa_names(pst)%in%suspected_ASV)
 pst.prev   
 pst.ancom=pst.no.single     
 ```
+#
 ### Removing singletones based on abundance: Supervised
-
+#
 #### Mximum threshold abundance for ASVs in the count table
 
 Singletones are those ASVs that occure only once across all samples. Therefore, their relative abundance `[ASV/sum(ASVs)]` equals to `1`. Since we have 4 different gourps of treatments, an ASV with appearance in only one sample cannot be due to biological differences, otherwise we would expect it to appear in at least one group of treatments. If you have done the prevoius 'prevalence filteing' step, there must be no singletones left in the dataset. However, removing singletones are not recommended for estimation of beta diversity metrics, especially richness as it is based on singletones and doubletones. While, you can remove them for differentially abundance analysis to get a clear signal from the dataset.
@@ -260,6 +262,8 @@ single.test[[1]]
 > Figure 5. Barplot of ASV relative abundance with their frequency across ASV table. The red bar represents the count of singletones.
 > 
 
+#
+
 #### Taxonomic filtering based on minimum threshold abundance 
 Unlike the prevoius step, which we removed the ones with outmost abundance `1` or `100%`, here, we look for those with a minimum threshold abundacne, i.e. an ASV should occure in > 0.01% across all samples to pass the filter.
 
@@ -278,6 +282,8 @@ Since in this study we are only interested in the changes of bacteria depending 
 pst = subset_taxa(pst, Kingdom == "d__Bacteria")
 pst
 ```
+
+#
 
 ### Rarefaction to an equal sampling depth
 
@@ -306,6 +312,7 @@ With the following code you can perform rarefaction:
 pst_rar_repF <- phyloseq::rarefy_even_depth(pst, sample.size = 17000, replace = F) #without replacement and 17000 sampling depth
 
 ```
+# 
 
 ### Converting reads from relative abundance to absolute abundance
 
@@ -330,6 +337,7 @@ otu_table(pst.qPCR) <- otu_table(pst.abs.rel, taxa_are_rows = TRUE)
 
 pst.qPCR.log = transform_sample_counts(pst.qPCR, function(x) {log(x+1)})
 ```
+# 
 
 ## 3. Alpha diversity
 
@@ -363,6 +371,7 @@ sample_data(pst.qPCR)
 
 ```
 
+#
 
 ## Creating a stacked barplot for visualizating the compositon of microbiota in different taxonomic level.
 
@@ -556,8 +565,10 @@ ggsave("./barplot_phylum_absolute.jpeg", device = "jpeg", dpi = 300, width = 7)
 ![alt text](https://github.com/farhadm1990/Microbiome_analysis/blob/main/Pix/barplot_phylum_absolute.jpeg) 
  > Figure 7. Stacked barplot for different phyla in 4 treatment groups.
 
-## Creating a venn diagram for shared taxa between different treatments.
+#
 
+## Creating a venn diagram for shared taxa between different treatments.
+#
 ### Species level
 
 ```R
@@ -597,7 +608,7 @@ ggsave(plot = ven.diag, "./venn.taxa.species.jpeg", device = "jpeg", dpi = 500)
 ![alt text](https://github.com/farhadm1990/Microbiome_analysis/blob/main/Pix/venn.taxa.species.jpeg)
 > Figure 8. Venn diagram of shared species between treatments.
 
-
+#
 ### Phylum level
 
 ```R
@@ -635,7 +646,7 @@ ggsave(plot = ven.diag, "./venn.taxa.phylum.jpeg", device = "jpeg", dpi = 500)
 > Figure 9. Venn diagram of shared phylum between treatments.
 
 
-
+#
 
 Loading chemical data
 
