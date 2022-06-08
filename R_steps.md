@@ -214,12 +214,12 @@ out.ASV = function (phyloseq, threshold =1, binwidth = 0.01) {
                        geom_label_repel(aes(x = 0.95, y =length(rel_abund)/10), 
                        label.padding =  unit(0.55, "lines"), label = glue("{length(names.single)}\n Singletones"), color = "black")
                             
-                   qplot.rmSing = qplot(rel_abund[!rownames(rel_abund) %in% names.single, ], geom = "histogram",
-                   binwidth = binwidth, main = "Frequency count of relative abundance without singletones") +
-                   xlab ("Relative abundance in samples") + ylab("Frequency")
+                       qplot.rmSing = qplot(rel_abund[!rownames(rel_abund) %in% names.single, ], geom = "histogram",
+                       binwidth = binwidth, main = "Frequency count of relative abundance without singletones") +
+                       xlab ("Relative abundance in samples") + ylab("Frequency")
                             
-                    print(glue('{length(names.single)} singletones detected in the dataset'))
-                    return(structure(list(qplot.withSing, qplot.rmSing, unlist(names.single))) )
+                       print(glue('{length(names.single)} singletones detected in the dataset'))
+                       return(structure(list(qplot.withSing, qplot.rmSing, unlist(names.single))) )
                     
                         }                        
     
@@ -237,12 +237,13 @@ The outcome of this function is a barplot showing the relative abundance of taxa
 
 
 ```R
-out.test[[1]]
+single.test[[1]]
 ```
 
 ![alt text](https://github.com/farhadm1990/Microbiome_analysis/blob/main/Pix/Singletone_plot.PNG)
 > Barplot of ASV relative abundance with their frequency across ASV table. The red bar represents the count of singletones.
 > 
+
 
 
 Since in this study we are only interested in the changes of bacteria depending on our environmental factors, we remove all non-bacterial ASVs in the Kingdom level.
