@@ -31,3 +31,5 @@ This module includes the following steps
 ### [4. Statistical analysis on alpha diversity metrics.](https://github.com/farhadm1990/Microbiome_analysis/blob/main/R_steps.md#4-statistical-analysis-on-alpha-diversity-metrics-generalized-linear-mixed-effect-model-glmem)
 #
 ### [5. Beta diversity.](https://github.com/farhadm1990/Microbiome_analysis/blob/main/R_steps.md#5-beta-diversity-diversity-between-samples)
+#
+### 6. Statistical analysis on beta diversity metrics.
