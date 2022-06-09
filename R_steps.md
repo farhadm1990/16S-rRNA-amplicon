@@ -870,11 +870,89 @@ ggsave(filename =  "./Network/treatment.net.bray_pval0.002.jpeg", net.treat, dpi
 ## 6. Statistical analysis on beta diversity: a Distance-based Redundancy Analysis (dbRDA)
 
 In the prevoius section, we showed how to visualized differences between samples belonging to different treatments in diversity of microbiota.
+First we create a distance matrix by either `vdist` from `vegan` package or by `distance` from `phyloseq` pakcage. 
+```R
+##WUniFrac log
+wunifrac.dist.qpcr.log = phyloseq::distance(pst.qPCR.log, method = "wunifrac")#weighted unifrac distance on log-transformed qpcr data dataset
+```
+
+Then we test to see if the disperssion of the variance around the treatment centroids are homogenous (variance homogeniety test) by `betadisper` function from `vegan` package. If the p-value of test statistic is significant, it means that there is a significant difference in variance for any of the tested levels and the results from your `dbrda` model will not be reliable.
+
+```R
+set.seed(10)
+
+# Making a permutational iteration to be passed on later
+h <- with(data = data.frame(sample_data(pst.qPCR.log)), how(blocks = litter, nperm = 9999))
+wunifrac.disp <- vegan::betadisper(wunifrac.dist.qpcr.log, group = sample_data(pst.qPCR.log)$treatment, 
+                                 type = "centroid")
+# Anova test
+anova(wunifrac.disp, permutations = h)
+#permutest(wunifrac.disp, permutation =h)
+```
+![beta.disper](https://github.com/farhadm1990/Microbiome_analysis/blob/main/Pix/beta.disper.PNG)
+> Figure 15. Test statistics for variance homogeniety test. Betadisper test statistics are not significant, meaning that we can accept the null hypothesis that our groups have the same dispersions of variance. This means we can be confident that our adonis/dbrda result is maninly due to biological differences due to the treatment effect rather than differences in variance dispersions.
 
 
+You can plot and save the PCoA of beta dispersion test:
+```R
+#to remove all open graphic devices if jpeg function doesn't save the picture
+for(i in dev.list()[1]:dev.list()[length(dev.list())]){
+   dev.off()
+    }
 
+jpeg( "./Beta diversity/dispersion of variance_wunifrac.jpeg", quality = 100)
+
+plot(wunifrac.disp, col = c("deeppink1", "deepskyblue", "darkorange",  "springgreen4"), bty = "n",
+  las = 1, main = "Dispersion of variance around the centroids, WUniFrac", sub=NULL,
+  xlab = sprintf("PCo1 [%s%%]", round(eig.vals/sum(eig.vals)*100,0)[1]),
+ ylab = sprintf("PCo2 [%s%%]", round(eig.vals/sum(eig.vals)*100,1)[2])); text("P = 0.09", 
+                                                               x = 0.15, y = -0.12, cex = 1.5)
+```
+
+![beta.disper.pcoa](https://github.com/farhadm1990/Microbiome_analysis/blob/main/Pix/dispersion%20of%20variance_wunifrac.jpeg)
+> Figure 16. PCoA of variance homogeniety test around the centroids for different treatments. In significant test statistic shows indicates a homogenous variance dispersion for all centroids.
+
+#
+### Distance-based Redundancy Analysis (dbRDA)
+Distance-based Redundancy Analysis (dbRDA) is a Redundancy Analysis on the eigenvalue-scaled result of Principal Coordinates Analysis. This is a method for carrying out constrained ordinations on data using non-Euclidean distance measures, with the assumption of liniear relationship between response and environmental variables ([this is not the case especially in ecological data](https://sites.ualberta.ca/~ahamann/teaching/graphics/LabRDA.pdf)). The usual methods for constrained ordinations (CCA, RDA) use Euclidean distance, but this does not work for all data, such as community count data, e.g. wunweighted UniFrac distance. 
+
+```R
+set.seed(1990)
+h <- with(data = data.frame(sample_data(pst.qPCR.log)), how(blocks = litter, nperm = 9999))
+
+db.rda.wunifrac = vegan::dbrda(wunifrac.dist.qpcr.log ~  gb * dss + sample_type  + Condition(litter), 
+data = sample_data(pst.qPCR.log)%>%data.frame)#dbRDA does not do any permutation test
+
+#but it is anova that does the permutations in order to generate the psudo-F statistics. 
+
+#inertia is the squared wunifrac distance here
+
+db.rda.wunifrac 
+```
+![dbrda.model](https://github.com/farhadm1990/Microbiome_analysis/blob/main/Pix/dbrda.model.PNG)
+> Figure 17. The dbrda model summary. Constrained is related to  the variance defiend by our treatments and the model component, and unconstrained is unexplained variance and is shows it for different MDS axis. Conditional term, here is our litter, is what we limitted the permutation within. Proportion column shows the proportion of variance explained by different components of our model.
+
+
+```R
+anova(db.rda.wunifrac, permutation =h) #first do the omnibus test to give you an overal test on the model
+anova(db.rda.wunifrac, permutation =h, by = "margin")
+anova(db.rda.wunifrac, permutation =h, by = "term")
+anova(db.rda.wunifrac, permutation =h, by = "axis")
+```
+![dbrda.omnibus](https://github.com/farhadm1990/Microbiome_analysis/blob/main/Pix/dbrda.model.PNG)
+> Figure 18. dbRDA test statistics and psudo-F for the whole model. F is the psudo-F, which is the ratio between the variance of the tested variables and the residual variance.
+
+![dbrda.margin](https://github.com/farhadm1990/Microbiome_analysis/blob/main/Pix/dbrda.margin.PNG)
+Figure 19. dbRDA test statistics and psudo-F for the
+
+![dbrda.term](https://github.com/farhadm1990/Microbiome_analysis/blob/main/Pix/dbrda.term.PNG)
+Figure 20. dbRDA test statistics and psudo-F for the
+
+![dbrda.axis](https://github.com/farhadm1990/Microbiome_analysis/blob/main/Pix/dbrda.axis.PNG)
+Figure 21. dbRDA test statistics and psudo-F for the
+
+#
 Loading chemical data
-
 ```R
 
 # Loading chemical data 
