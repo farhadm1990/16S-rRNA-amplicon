@@ -939,17 +939,23 @@ anova(db.rda.wunifrac, permutation =h, by = "margin")
 anova(db.rda.wunifrac, permutation =h, by = "term")
 anova(db.rda.wunifrac, permutation =h, by = "axis")
 ```
-![dbrda.omnibus](https://github.com/farhadm1990/Microbiome_analysis/blob/main/Pix/dbrda.model.PNG)
+![dbrda.omnibus](https://github.com/farhadm1990/Microbiome_analysis/blob/main/Pix/dbrda.omnibus.PNG)
+
 > Figure 18. dbRDA test statistics and psudo-F for the whole model. F is the psudo-F, which is the ratio between the variance of the tested variables and the residual variance.
 
 ![dbrda.margin](https://github.com/farhadm1990/Microbiome_analysis/blob/main/Pix/dbrda.margin.PNG)
-Figure 19. dbRDA test statistics and psudo-F for the
+
+Figure 19. dbRDA test statistics and psudo-F for the marginal effects.
 
 ![dbrda.term](https://github.com/farhadm1990/Microbiome_analysis/blob/main/Pix/dbrda.term.PNG)
-Figure 20. dbRDA test statistics and psudo-F for the
+
+Figure 20. dbRDA test statistics and psudo-F for different independent variables passed on to the model.
 
 ![dbrda.axis](https://github.com/farhadm1990/Microbiome_analysis/blob/main/Pix/dbrda.axis.PNG)
-Figure 21. dbRDA test statistics and psudo-F for the
+
+Figure 21. dbRDA test statistics and psudo-F for different dbRSA axis.
+
+
 
 #
 Loading chemical data
