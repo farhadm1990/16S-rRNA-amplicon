@@ -796,12 +796,38 @@ wunifrac.pcoa.log = plot_ordination(pst.qPCR.log, wunifrac.pcoa, color="treatmen
    coord_fixed(sqrt(evals[2]/evals[1]))+  #+stat_ellipse() you could also add ellipse to your clusters.
    labs(x = sprintf("PCoA1 [%s%%]", round(evals/sum(evals)*100,1)[1]),
    y = sprintf("PCoA2 [%s%%]", round(evals/sum(evals)*100, 2)[2])) +
-   scale_color_manual(values = c("deeppink1", "deepskyblue", "darkorange",  "springgreen4"))
+   scale_color_manual(values = c("deeppink1", "deepskyblue", "darkorange",  "springgreen4")) + 
+   theme_classic() + geom_vline(xintercept = 0, lty = 2, alpha=0.5) + 
+   geom_hline(yintercept = 0, lty = 2, alpha =0.5)  + geom_point(size = 4) +coord_fixed()+
+   scale_y_continuous(limits = c(-0.12, 0.15)) + scale_x_continuous(limits = c(-0.15, 0.21)) +  theme_bw() +
+   theme(text = element_text(size = 15, face = "bold"))
 wunifrac.pcoa.log
 ```
 ![(wunifrac.pcoa.log)](https://github.com/farhadm1990/Microbiome_analysis/blob/main/Pix/wunifrac.pcoa.log.jpeg)
+> Figure 11. PCoA plot for weighted UniFrac distance. Each point represents one sample with different colors correspondent to treatments and the segment/sample type as the shape for the points. 
+
+```R
+#Wunifrac NMDS
+wunifrac.nmds.log=ordinate(pst.qPCR.log, method="NMDS", distance = "wunifrac")
+wunifrac.stress = stressplot(wunifrac.nmds.log)#in this dataset, R squared shows that the nMDS is perfectly able to capture variation in the data.
+# plot(wunifrac.nmds.log)#the red points are Transformed taxon-wise dissimilarities and the circles are Transformed sample-wise dissimilarities.
+
+wunifrac.nmds.log = plot_ordination(pst.qPCR.log, wunifrac.nmds.log, color="treatment", shape= "sample_type", 
+  title = "Weighted UniFrac distance NMDS plot of log data")+
+  labs(col="Treatment", shape = "Segment")+
+  scale_color_manual(values = c("deeppink1", "deepskyblue", "darkorange",  "springgreen4")) +
+  theme_bw() + geom_vline(xintercept = 0, lty = 2, alpha=0.5) + 
+  geom_hline(yintercept = 0, lty = 2, alpha =0.5)+scale_x_continuous(limits = c(-0.15, 0.25)) + 
+  scale_y_continuous(limits = c(-0.1, 0.1)) + theme(text = element_text(size = 15, face = "bold")) + geom_point(size =4)+
+  coord_fixed()
+wunifrac.nmds.log 
+```
+![stress plot](https://github.com/farhadm1990/Microbiome_analysis/blob/main/Pix/stress%20plot%20of%20Wnweighted%20UniFrac%20distance%20for%20NMDS%20plot%20with%20log%20transformation.jpeg)
+> Figure 12. Stress plot for NMDS of weighted UniFrac. R squares shows how well the NMDS captures variation in the data, hence the higher the better. 
 
 
+![alt text](https://github.com/farhadm1990/Microbiome_analysis/blob/main/Pix/wunifrac.nmds.logtransformed.jpeg)
+> Figure 13. NMDS plot for weighted UniFrac distance. Each point represents one sample with different colors correspondent to treatments and the segment/sample type as the shape for the points. 
 
 Loading chemical data
 
