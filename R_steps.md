@@ -1009,7 +1009,7 @@ for(i in seq_len(ncol(sample_data(pst.qPCR)))) {
 
 ```
 
-Then we
+Then we can fit chemical data to our dbrda model and make the ordination data frames for ploting.
 
 ```R
 pst.spec <- gloomer(ps = pst.qPCR.log, taxa_level = "Species", NArm = TRUE)
@@ -1024,6 +1024,7 @@ otu_table(pst.spec.chem) <- otu_table(pst.spec.chem)[, colnames(otu_table(pst.sp
 
 wunifrac.dist.qpcr = phyloseq::distance(pst.spec.chem, method = "wunifrac") # Making a new distance
 
+set.see
 dbrda.wunifrac.chem = dbrda(wunifrac.dist.qpcr ~  gb * dss  + Condition(litter), data = sample_data(pst.spec.chem)%>%data.frame)
 h <- with(data = data.frame(sample_data(pst.spec.chem)), how(blocks = litter, nperm = 9999))
 
@@ -1062,4 +1063,27 @@ arrow.df$y0 = rep(0, nrow(U))
 arrow.df2 = data.frame(PCoA1 = U[,1], PCoA2 = U[,2], taxon = rownames(U), x0 = rep(0, nrow(U), y0 = rep(0, nrow(U))))
 arrow.df$y0 = rep(0, nrow(U))
 
+# Making the labeled dbrda plot
+
+score.site %>% ggplot(aes(dbRDA1, dbRDA2))  +
+geom_point(size =4, aes( color = sample_data(pst.qPCR.log)$treatment, shape = sample_data(pst.qPCR.log)$sample_type) ) + geom_hline(yintercept = 0, lty = 2, alpha =0.5) + geom_vline(xintercept = 0, lty = 2,
+                                                                                  alpha = 0.5)+
+coord_fixed() + scale_color_manual(values = c("deeppink1", "deepskyblue", "darkorange",  "springgreen4")) + 
+theme_bw() + scale_y_continuous(na.value = c(-2, 3), n.breaks = 10) +
+scale_x_continuous(na.value = c(-1, 1), n.breaks = 10) + labs(col="Treatment", shape = "Segment") + 
+xlab(label = paste("dbRDA1 [", round(eig.vals[[1]]/sum(eig.vals)*100, 1), 
+                    "% of fitted and", round(eig.vals[[1]]/inertia.total*100, 1), "% of total variation]")) + 
+ylab(label = paste("dbRDA2 [", round(eig.vals[[2]]/sum(eig.vals)*100, 1), "% of fitted and", round(eig.vals[[2]]/inertia.total*100, 1), "of total variation]")) + 
+theme(axis.title = element_text(size = 15), text = element_text(size = 13, face = "bold"),
+    axis.text.x =element_text(size =10, face = "bold"),
+axis.text.y =element_text(size =10, face = "bold")) + ggtitle(label = "dbRDA plot of WUF scores for site") + 
+geom_segment(data = arrow.df, aes(x0, y0, xend = PCoA1, yend = PCoA2), color = "purple", size = 0.5, 
+             arrow = arrow(type = "closed", angle = 15, length = unit(0.75,"line"))) + 
+geom_text(data = arrow.df, aes(PCoA1, PCoA2, label = taxon), position = position_nudge(0.1), size = 4, color = "black") 
+#
+ggsave("./ordinations/wunifrac.dbRDA.scores.site.labeled.jpeg", height = 8, width = 10, dpi =300)
 ```
+![dbrda.ord.label](https://github.com/farhadm1990/Microbiome_analysis/blob/main/Pix/wunifrac.dbRDA.scores.site.labeled.jpeg)
+> Figure 23. Ordination plot of dbRDA site or sample scores and labeled with chemical data. The direction of arrows indicates association between biogenic amines and red meat consumption for instance.
+
+## 7. Differential abundance analysis of taxa: by DESeq2
