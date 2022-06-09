@@ -956,7 +956,40 @@ Figure 20. dbRDA test statistics and psudo-F for different independent variables
 Figure 21. dbRDA test statistics and psudo-F for different dbRSA axis.
 
 
+Now you can extract the `site` and `centroid` scores from your `db.rda.wunifrac` artifact and make an ordination plot out of the model, which is the variation explained only by the treatments. 
 
+```R
+# Extreacting the goodies :)
+score.site = vegan::scores(db.rda.wunifrac, display = "sites") %>% as.data.frame
+score.centroid = vegan::scores(db.rda.wunifrac, display = "cn") %>% as.data.frame
+rownames(score.centroid) <- levels(sample_data(pst.qPCR)$treatment)
+
+eig.vals = db.rda.wunifrac$CCA$eig
+inertia.total = db.rda.wunifrac$tot.chi #Total variation (inertia) explained. This number should be used as the denominator for measuring the amount of variance out of totoal variance wxplained by each dbrda axis.
+
+#Ordination Plot
+score.site %>% ggplot(aes(dbRDA1, dbRDA2, shape = sample_data(pst.qPCR)$sample_type, 
+                          color = sample_data(pst.qPCR)$treatment)) +
+geom_point(size =5 ) + geom_hline(yintercept = 0, lty = 2, alpha =0.5) + geom_vline(xintercept = 0, lty = 2,
+                                                                                  alpha = 0.5)+
+coord_fixed() + scale_color_manual(values = c("deeppink1", "deepskyblue", "darkorange",  "springgreen4")) + 
+theme_bw() + scale_y_continuous(na.value = c(-2, 3), n.breaks = 10) +
+scale_x_continuous(na.value = c(-1, 1), n.breaks = 10) + labs(col="Treatment", shape = "Segment") + 
+xlab(label = paste("dbRDA1 [", round(eig.vals[[1]]/sum(eig.vals)*100, 1), 
+                    "% of fitted and", round(eig.vals[[1]]/inertia.total*100, 1), "% of total variation]")) + 
+ylab(label = paste("dbRDA2 [", round(eig.vals[[2]]/sum(eig.vals)*100, 1), "% of fitted and", round(eig.vals[[2]]/inertia.total*100, 1), "of total variation]")) + 
+theme(axis.title = element_text(size = 15), text = element_text(size = 13, face = "bold"),
+    axis.text.x =element_text(size =10, face = "bold"),
+axis.text.y =element_text(size =10, face = "bold")) + ggtitle(label = "dbRDA plot of WUF scores for site")  # + 
+#stat_ellipse(data = score.site, aes(dbRDA1, dbRDA2), type = "euclid", linetype = 2, inherit.aes = F, geom = "polygon" )
+
+ggsave("./Beta diversity/wunifrac.dbRDA.scores.site.jpeg", height = 8, width = 9, dpi =300)
+```
+
+![dbrda.plot](https://github.com/farhadm1990/Microbiome_analysis/blob/main/Pix/wunifrac.dbRDA.scores.site.jpeg)
+> Figure 22. Ordination plot of dbRDA site or sample scores. Each point reprents one sample. On different axis you can see the variance explained by our constrained varialbes, i.e. treatments after fitting the model and the other variance explained by treatment out of total variance. 
+
+You can also bring environmental facrotis 
 #
 Loading chemical data
 ```R
