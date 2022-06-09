@@ -1086,4 +1086,9 @@ ggsave("./ordinations/wunifrac.dbRDA.scores.site.labeled.jpeg", height = 8, widt
 ![dbrda.ord.label](https://github.com/farhadm1990/Microbiome_analysis/blob/main/Pix/wunifrac.dbRDA.scores.site.labeled.jpeg)
 > Figure 23. Ordination plot of dbRDA site or sample scores and labeled with chemical data. The direction of arrows indicates association between biogenic amines and red meat consumption for instance.
 
-## 7. Differential abundance analysis of taxa: by DESeq2
+## 7. Differential abundance analysis of taxa: DESeq2
+ 
+Now that we found out the main effects of red meat consumption and DSS treatment and their interaction were significant on beta diversity, we can move on to identify those bacteria/ASVs that were differentially abundant depending on different treatments in a certain taxonomic level. First, we gloom the taxa to `phylum` and `species` levels. Second, make a model design formula. Third, you can estimate the geometric means for the estimation of size factors and then you c
+
+
+
