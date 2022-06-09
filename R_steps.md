@@ -646,13 +646,155 @@ ggsave(plot = ven.diag, "./venn.taxa.phylum.jpeg", device = "jpeg", dpi = 500)
 > Figure 9. Venn diagram of shared phylum between treatments.
 
 
+# 
+
+## 4. Statistical analysis on alpha diversity metrics: Generalized Linear Mixed Effect Model (GLMEM)
+
+This experiment was done in a 3 complete blocks with a `2 x 2` factorial design for the treatment arrangement on 23 6-week old piglets. In each block/round, we have used 2 litters (sow from which we got the piglets). After `19` days of experiemnt, piglets were sacrificed and digesta samples were taken from their proximal and distal colon and feces. In each round of experiment (n = 3), there were `4` pens in which 2 pigs were housed.
+
+```R
+
+#Loading required packages
+library(nlme)
+library(lme4)
+library(lmerTest)
+library(car)
+library(lsmeans)
+library(postHoc)
+library(multcomp)
+
+# Creating a data frame from the metadata.
+alpha.qpcr = sample_data(pst.qPCR) %>% data.frame
+
+# Inspecting the distribution of alpha metrics
+
+alpha.qpcr$Chao1 %>% hist(main = "Chao")
+alpha.qpcr$Shannon  %>% hist(main = "Shannon")
+alpha.qpcr$FaithPD %>% hist(main = "FaithPD")
+
+# Checking the experiment desing and rank efficiency of variables
+xtabs(~ gb + dss + litter +  Pen, exp.test)
+
+# Fitting the data to a GLMEM by glmer function with Gamma distribution and log link. We can use the optimizer control = glmerControl(optimizer = c("bobyqa", "bobyqa")) to fix convergance issue, if there was any.
+faith.lm = glmer(FaithPD ~ gb * dss + sample_type + blok  + (1|litter) + (1|pig_no), 
+            data = alpha.qpcr, family = Gamma(link = "log")) # Full model
+            
+faith.red = glmer(FaithPD ~ gb * dss   + (1|litter) + (1|pig_no), 
+            data = alpha.qpcr, family = Gamma(link = "log")) # Reduced model
+anova(faith.lm, faith.red)                                   # Checking for differences in the models after reduction
+
+car::Anova(faith.red, type = 2) #A qi-square test. if the interaction is not significant use the default type 2 and otherwise type 3 (reports the intercept). 
+
+faith.pairs = pairs(emmeans(faith.lm, ~ gb + dss), type = "response", adjust = "BH") %>% cld(Letters = letters) # Extracting responses and their pairwise comparison. Type="response" can give you a back transformed pair-wise comparision of EMMs. 
+
+#contrast(emmeans(chao.red, ~ gb * dss), adjust = "BH", type = "response", interaction =  T)
+
+cld(emmeans(faith.lm, ~ gb + dss, adjust = "BH",  type = "response"),Letters = letters) 
+#summary(emmeans(chao.red, ~ gb + dss, adjust = "BH",  type = "response"))
+
+```
+
+Now you can extract the parwise comparisons from the model to be used for figure annotations.
+
+```R
+#extracted pairwise comparisons from the model
+
+chao.pairs = chao.pairs %>% as.data.frame %>% rownames_to_column("order") %>% arrange(order)
+shannon.pairs = shan.pairs %>% as.data.frame %>% rownames_to_column("order") %>% arrange(order)
+faith.pairs = faith.pairs %>% as.data.frame %>% rownames_to_column("order") %>% arrange(order)
+
+
+#creating df for the manual pvalue
+chao.stat = chao.pairs %>% mutate(group1 = factor(c("CT", "CT", "CT", "GB", "GB", "DSS"), levels = c("CT", "GB", "DSS") ), 
+                       group2 = factor( c("GB", "DSS", "GBDSS", "DSS", "GBDSS", "GBDSS"), levels = c("GB", "DSS", "GBDSS" )),
+                       p =ifelse(chao.pairs$p.value < 0.06 & chao.pairs$p.value > 0.01 , "*", 
+                           ifelse(chao.pairs$p.value < 0.01 &  chao.pairs$p.value > 0.001, "**",
+                           ifelse(chao.pairs$p.value < 0.001 , "***", "ns")))) %>% as_tibble
+
+shannon.stat =  shannon.pairs %>% mutate(group1 = factor(c("CT", "CT", "CT", "GB", "GB", "DSS"), levels = c("CT", "GB", "DSS") ), 
+                       group2 = factor( c("GB", "DSS", "GBDSS", "DSS", "GBDSS", "GBDSS"), levels = c("GB", "DSS", "GBDSS" )),
+                       p =ifelse(shannon.pairs$p.value < 0.06 & shannon.pairs$p.value > 0.01 , "*", 
+                           ifelse(shannon.pairs$p.value < 0.01 &  shannon.pairs$p.value > 0.001, "**",
+                           ifelse(shannon.pairs$p.value < 0.001 , "***", "ns")))) %>% as_tibble
+
+faith.stat =  faith.pairs %>% mutate(group1 = factor(c("CT", "CT", "CT", "GB", "GB", "DSS"), levels = c("CT", "GB", "DSS") ), 
+                       group2 = factor( c("GB", "DSS", "GBDSS", "DSS", "GBDSS", "GBDSS"), levels = c("GB", "DSS", "GBDSS" )),
+                       p =ifelse(faith.pairs$p.value < 0.06 & faith.pairs$p.value > 0.01 , "*", 
+                           ifelse(faith.pairs$p.value < 0.01 &  faith.pairs$p.value > 0.001, "**",
+                           ifelse(faith.pairs$p.value < 0.001 , "***", "ns")))) %>% as_tibble
+```
+
+Making a violin plot for FaithPD, as an example, with pairwise comparisons between treatments. 
+
+ 
+
+```R
+library(ggpubr)
+
+#Creating a long dataframe
+long_mtdat = long_data[long_data$variable %in% c("FaithPD"),]
+
+ggboxplot(long_mtdat, x = "treatment", y = "value", width = 0, facet.by = "variable") +
+geom_violin( aes(fill = treatment), alpha=0.7, trim = FALSE)+ 
+geom_boxplot(width =0.15, outlier.color = NA)+ stat_pvalue_manual( data = faith.stat, y.position = 35.8,
+xmin = "group1", xmax = "group2", step.increase =0.1, label = "p")  +
+geom_jitter(aes(color = treatment), alpha = 0.4, size = 2, show.legend = F) +
+scale_fill_manual(values = c("deeppink1", "deepskyblue", "darkorange",  "springgreen4"))+ 
+scale_color_manual(values = c("deeppink1", "deepskyblue", "darkorange",  "springgreen4"))+
+labs(fill= "Treatment", title = "Violin plot of FaithPD based on absolute counts", y = "Alpha diversity",
+x = "Treatment") + theme_bw() + 
+theme(text = element_text(size =11, face = "bold"))
+
+ggsave(filename = "./alpha_dss_abs_faith.jpeg", device = "jpeg", dpi = 300, width = 5)
+```
+![alt text](https://github.com/farhadm1990/Microbiome_analysis/blob/main/Pix/alpha_dss_abs_faith.jpeg)
+> Figure 10. Violin plot of FaithPD metric for four treatments. Pairwise comparisons were adjusted by BH at P < 0.5.
+
 #
+
+## 5. Beta diversity: diversity between samples
+
+Before measuring beta diveristy, it is worth to know that unlike alpha diversity which deals with differences of diversity within samples, beta diversity accounts for diversity and differences in community between groups of samples. In this chapter we `phyloseq` and `vegan` packages. There are different beta diversity metrics such as Jaccard index, Bray-Curtis dissimilarity or UniFrac distance.  
+
+#### The Jaccard distance: 
+To calculate the Jaccard index, we take the intersection (the number of species present in both samples) and divide this 
+by the total number of species, or their union. 
+
+#### Bray-Curtis dissimilarity:
+Bray-courtis, unlike the Jaccard (only taking presence absence into account), accounts for the number of features in each groups (evenness). Therefore, it is to say that Bray-curtis is the beta equivalent of Shannon in alpha. To measure Breay-Curtis dissimilarity matrix, we first look at the abundances, or the total counts, of species shared between the two samples. Next, we take the smallest value for each of the shared species. We add all these smallest values and multiply it by two. Next, we divide this by the sum of the values in both samples. This dissimilarity matrix has range of 0 (similar) to 1 (dissimilar).
+
+#### UniFrac Phylogenetic Distance
+The UniFrac distance does not use species directly. Instead, it works with a phylogenetic tree. The phylogenetic tree is made from differences between genes. Species on branches close together in the tree have more similar genes. Instead of counting species present in both samples, we sum the lengths of branches that are not shared and divide them by the sum of all branch lengths (unweighted UniFrac) and if you multiply the branch lenghts to the abundance of taxa it will be called weighted UniFrac.
+
+
+To estimate beta diversity, it is advisable to `log` transform your data to account for the zero inflation. Here we literaly add a psodocount to the zero counts as log of zero is undefined.
+
+```R
+pst.qPCR.log <- transform_sample_counts(pst.qPCR, function(x) log(1+x))
+
+```
+
+If you want to know different distance metrics, you can do as follows:
+```R
+#Here is a list of all distance metrics
+dist_methods <- unlist(distanceMethodList)
+print(dist_methods)
+```
+
+You can create a metric distance scaling (MDS) also termed as Principal Coordinate Analysis (PCoA) or non-metric distance scaling (NMDS) plots to visualize beta diversity of your bacterial data on reduced dimentional plots. In this example we only do that for Weighted UniFrac Phylogenetic Distance.
+
+```R
+
+
+```
+
+
 
 Loading chemical data
 
 ```R
 
-# I have added FaithPD to the dataset 
+# Loading chemical data 
 chem.dat = read.table("./qPCR_metadat.tsv")
 sample_data(pst.qPCR) <- chem.dat
 
