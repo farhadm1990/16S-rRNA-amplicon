@@ -32,4 +32,4 @@ This module includes the following steps
 #
 ### [5. Beta diversity.](https://github.com/farhadm1990/Microbiome_analysis/blob/main/R_steps.md#5-beta-diversity-diversity-between-samples)
 #
-### 6. Statistical analysis on beta diversity metrics.
+### [6. Statistical analysis on beta diversity metrics.](https://github.com/farhadm1990/Microbiome_analysis/blob/main/R_steps.md#6-statistical-analysis-on-beta-diversity-a-distance-based-redundancy-analysis-dbrda)
