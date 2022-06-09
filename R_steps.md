@@ -989,16 +989,16 @@ ggsave("./Beta diversity/wunifrac.dbRDA.scores.site.jpeg", height = 8, width = 9
 ![dbrda.plot](https://github.com/farhadm1990/Microbiome_analysis/blob/main/Pix/wunifrac.dbRDA.scores.site.jpeg)
 > Figure 22. Ordination plot of dbRDA site or sample scores. Each point reprents one sample. On different axis you can see the variance explained by our constrained varialbes, i.e. treatments after fitting the model and the other variance explained by treatment out of total variance. 
 
-You can also bring environmental facrotis 
-#
-Loading chemical data
+You can also fit environmental factors and taxa on this ordination plot. In this instance, I will try to see which chemicals, e.g. SCFA had associations with any treatments on our dbRDA plot.
+
+In order to do so I load chemical data first:
 ```R
 
 # Loading chemical data 
 chem.dat = read.table("./qPCR_metadat.tsv")
 sample_data(pst.qPCR) <- chem.dat
 
-
+#changing the variable classes to factor if applicable
 
 for(i in seq_len(ncol(sample_data(pst.qPCR)))) {
  if(!is.numeric(sample_data(pst.qPCR)[[i]]) && !is.logical(sample_data(pst.qPCR)[[i]])) {
@@ -1006,5 +1006,60 @@ for(i in seq_len(ncol(sample_data(pst.qPCR)))) {
      sample_data(pst.qPCR)[[i]]
  } 
 }
+
+```
+
+Then we
+
+```R
+pst.spec <- gloomer(ps = pst.qPCR.log, taxa_level = "Species", NArm = TRUE)
+
+#Envfit for chemical data
+env.chem = sample_data(pst.spec)[,15:24] %>% as.matrix
+env.chem = apply(env.chem, 2, function(x) log(1 + x)) #log transformation of chemical data
+pst.spec.chem <-pst.spec
+env.chem = env.chem[complete.cases(env.chem),]        # Removing NA
+
+otu_table(pst.spec.chem) <- otu_table(pst.spec.chem)[, colnames(otu_table(pst.spec.chem)) %in% rownames(env.chem) ]
+
+wunifrac.dist.qpcr = phyloseq::distance(pst.spec.chem, method = "wunifrac") # Making a new distance
+
+dbrda.wunifrac.chem = dbrda(wunifrac.dist.qpcr ~  gb * dss  + Condition(litter), data = sample_data(pst.spec.chem)%>%data.frame)
+h <- with(data = data.frame(sample_data(pst.spec.chem)), how(blocks = litter, nperm = 9999))
+
+#Fitting data with envfit
+rda.env  = envfit(dbrda.wunifrac.chem, env =  env.chem, perm = h, choice = c(1, 2), na.rm = TRUE)
+                 
+envfit = data.frame(rda.env$vectors[1]$arrows, p.vals = rda.env$vectors[4] ) 
+                 
+sig.envfit = envfit[envfit$pvals  < 0.05, ]
+                 
+env.chem = env.chem[, colnames(env.chem) %in% rownames(sig.envfit)]
+                 
+x = sig.envfit[,1]*0.15
+y = sig.envfit[,2]*0.2
+x0 = rep(0, length(x))
+y0 = rep(0, length(y))
+
+#plotting species
+Y= t(otu_table(pst.spec.chem))
+n = nrow(Y)
+
+#standardizing the first two eigenvectors
+ev.stand  = scale(dbrda.wunifrac.chem$CA$u[,c(1,2)])
+
+#Then the cov function calculates covariance between chemical concentration and the standardized eigenvectors.
+
+n = nrow(env.chem)
+
+S = cov(env.chem, ev.stand)
+
+U = S %*% diag((dbrda.wunifrac.chem$CCA$eig[c(1,2)]/(n-1))^(-0.19))
+
+arrow.df = data.frame(PCoA1 = U[,1], PCoA2 = U[,2], taxon = rownames(U), x0 = rep(0, nrow(U), y0 = rep(0, nrow(U))))
+arrow.df$y0 = rep(0, nrow(U))
+                 
+arrow.df2 = data.frame(PCoA1 = U[,1], PCoA2 = U[,2], taxon = rownames(U), x0 = rep(0, nrow(U), y0 = rep(0, nrow(U))))
+arrow.df$y0 = rep(0, nrow(U))
 
 ```
