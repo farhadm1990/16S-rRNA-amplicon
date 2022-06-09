@@ -781,12 +781,25 @@ dist_methods <- unlist(distanceMethodList)
 print(dist_methods)
 ```
 
-You can create a metric distance scaling (MDS) also termed as Principal Coordinate Analysis (PCoA) or non-metric distance scaling (NMDS) plots to visualize beta diversity of your bacterial data on reduced dimentional plots. In this example we only do that for Weighted UniFrac Phylogenetic Distance.
+You can create a metric distance scaling (MDS) also termed as Principal Coordinate Analysis (PCoA) or non-metric distance scaling (NMDS) plots to visualize beta diversity of your bacterial data on reduced dimentional plots. In this example we only do that for Weighted UniFrac Phylogenetic Distance by `ordinate` function from phyloseq package.
 
 ```R
+#Weighted UniFrac: based on log-transformed data 
 
+#Wunifrac PCoA
+wunifrac.pcoa = ordinate(pst.qPCR.log, method = "PCoA", distance = "wunifrac")
+evals<-wunifrac.pcoa$values$Eigenvalues
 
+wunifrac.pcoa.log = plot_ordination(pst.qPCR.log, wunifrac.pcoa, color="treatment", shape= "sample_type", 
+   title = "PCoA plot of log Weighted UniFrac")+
+   labs(col="Treatment", shape = "Segment")+
+   coord_fixed(sqrt(evals[2]/evals[1]))+  #+stat_ellipse() you could also add ellipse to your clusters.
+   labs(x = sprintf("PCoA1 [%s%%]", round(evals/sum(evals)*100,1)[1]),
+   y = sprintf("PCoA2 [%s%%]", round(evals/sum(evals)*100, 2)[2])) +
+   scale_color_manual(values = c("deeppink1", "deepskyblue", "darkorange",  "springgreen4"))
+wunifrac.pcoa.log
 ```
+![(wunifrac.pcoa.log)](https://github.com/farhadm1990/Microbiome_analysis/blob/main/Pix/wunifrac.pcoa.log.jpeg)
 
 
 
