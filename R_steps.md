@@ -829,6 +829,50 @@ wunifrac.nmds.log
 ![alt text](https://github.com/farhadm1990/Microbiome_analysis/blob/main/Pix/wunifrac.nmds.logtransformed.jpeg)
 > Figure 13. NMDS plot for weighted UniFrac distance. Each point represents one sample with different colors correspondent to treatments and the segment/sample type as the shape for the points. 
 
+### Network-based beta diversity
+
+You can also create a #graph or #network for understaning the similairty/dissimilarity of bacterial distributions between treatments based on distance metrics, e.g. Bray-Curtis dissimilairty matrix. The samples with the similar distributions form solid edges, and with close relations they form mixed edges and with different distributions they form no edges with one another. Then you can perform a permutational test to verify the graph's validity.
+
+```R
+library("phyloseqGraphTest")
+library("igraph")
+library("ggnetwork")
+
+# Creating the based on Bray-Curtis dissimaliry matrix
+
+gt = graph_perm_test(pst.qPCR, "treatment",
+                    distance = "bray", type = "mst")
+gt$pval
+
+# Graph 
+
+plotNet = plot_test_network(gt) + theme(legend.text = element_text(size = 8),
+        legend.title = element_text("Network based analysis of treatments based on\n Bray-Curtis, P = 0.002", size = 9)) + 
+labs(col = "Treatment") + geom_nodes(aes(color = sampletype), inherit.aes = T, size = 5) + 
+scale_color_manual(values = c("deeppink1", "darkorange", "deepskyblue",   "springgreen4"))
+
+#Permutaion test histogram
+plotPerm1 = plot_permutations(gt) + theme_bw() + geom_text(label = glue("{gt$pval}"), aes(x = 55, y = 10), color = "red")
+
+#Patching two plots together
+net.treat = grid.arrange(ncol = 2, plotNet, plotPerm1) 
+
+ggsave(filename =  "./Network/treatment.net.bray_pval0.002.jpeg", net.treat, dpi = 300, device = "jpeg", width = 12, height = 10)
+
+```
+
+![graph_bray](https://github.com/farhadm1990/Microbiome_analysis/blob/main/Pix/treatment.net.bray_pval0.002.jpeg)
+> Figure 14. Graph-based plot based on Bray-Curtis dissimilarity with minimum-spanning tree (MST) test statistic.
+
+
+#
+
+## 6. Statistical analysis on beta diversity: a Distance-based Redundancy Analysis (dbRDA)
+
+In the prevoius section, we showed how to visualized differences between samples belonging to different treatments in diversity of microbiota.
+
+
+
 Loading chemical data
 
 ```R
