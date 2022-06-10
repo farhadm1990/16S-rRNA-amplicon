@@ -1088,7 +1088,127 @@ ggsave("./ordinations/wunifrac.dbRDA.scores.site.labeled.jpeg", height = 8, widt
 
 ## 7. Differential abundance analysis of taxa: DESeq2
  
-Now that we found out the main effects of red meat consumption and DSS treatment and their interaction were significant on beta diversity, we can move on to identify those bacteria/ASVs that were differentially abundant depending on different treatments in a certain taxonomic level. First, we gloom the taxa to `phylum` and `species` levels. Second, make a model design formula. Third, you can estimate the geometric means for the estimation of size factors and then you c
+Now that we found out the main effects of red meat consumption and DSS treatment and their interaction were significant on beta diversity, we can move on to identify those bacteria/ASVs that were differentially abundant depending on different treatments in a certain taxonomic level. First, we gloom the taxa to `phylum` and `species` levels. Second, make a model design formula. Third, you can estimate the geometric means for the estimation of size factors and then you can pas it on to the `geomMeans` argument of `estimateSizeFactors` function and fit it by `DESeq` function with `Wald` test in a `parametric` fit type.
+
+```R
+#glooming the taxa 
+#phyl.qpcr =  gloomer(ps = pst.qPCR, taxa_level = "Phylum", NArm = TRUE)
+#spec.qpcr = gloomer(pst.qPCR, taxa_level =  "Species", NArm = TRUE)
+
+#Creating the experimental design
+coldat = sample_data(phyl.qpcr)[,1:8] %>% data.frame
+coldat$Pen <- factor(coldat$Pen, levels = c("pn1", "pn2", "pn3", "pn4"))
+coldat$blok <- relevel(coldat$blok, 1)
+#Here we can also do the factorial model.
+design = model.matrix(~ gb * dss + blok + sample_type, data = coldat)
+
+#since different litters have been used in different blocks, there is a rank defficiency for the model when it comes to the interaciton. 
+#Therefore, we remove those all-zero columns from our desing and use the updated desing for fitting the model
+zeros = apply(design, 2, function(x) all(x==0))
+zeros = which(zeros)              
+#design = design[,-zeros]
+
+# Making a deseq artifact with the facrotial design             
+phyl_dds <- phyloseq_to_deseq2(phyl.qpcr, design = design )
+
+# Calculating geometric means prior to estimate size factors
+gm.mean = function(x, na.rm= TRUE) {
+    exp(sum(log(x[x>0]), na.rm=na.rm)/length(x))
+}
+
+geo.mean = apply(counts(phyl_dds), 1, gm.mean)
+
+phyl_dds = estimateSizeFactors(phyl_dds, geoMeans = geo.mean)
+
+phyl_dds<-DESeq(phyl_dds, test = "Wald", fitType = "parametric")
+
+# You can do the same for the species
+
+spec_dds<-phyloseq_to_deseq2(spec.qpcr, design  = design) #for phylum the deseq object is, phyl_dds
+geo.mean = apply(counts(spec_dds), 1, gm.mean)
+spec_dds = estimateSizeFactors(spec_dds, geoMeans = geo.mean)
+spec_dds<-DESeq(spec_dds, test = "Wald", fitType = "parametric")
 
 
+```
 
+You can now see the results anames by typing `resultsNames(phyl_dds)`, and based on that you can extract the results from the model.
+
+```R
+results(phyl_dds, name = "treatmentGB") %>% data.frame %>% filter(padj <= 0.05)
+results(phyl_dds, name = "treatmentDSS") %>% data.frame %>% filter(padj <= 0.05)
+results(phyl_dds, name = "treatmentGBDSS") %>% data.frame %>% filter(padj <= 0.01)
+```
+
+
+It is always good to test if there are outliers in your result table.
+
+```R
+#Test for outliers
+phyl.res<-results(phyl_dds, cooksCutoff = FALSE)#to get the results of gb and gbdss and blok vs. ct and block 1
+alpha=0.05
+sigtab=phyl.res[which(phyl.res$padj<=alpha),]
+sigtab.phyl=cbind(as(sigtab, "data.frame"), as(tax_table(phyl.qpcr)[rownames(sigtab),], "matrix"))
+
+spec.res<-results(spec_dds, cooksCutoff = FALSE)#to get the results of gb and gbdss and blok vs. ct and block 1
+alpha=0.05
+sigtab=spec.res[which(spec.res$padj<=alpha),]
+sigtab.spec=cbind(as(sigtab, "data.frame"), as(tax_table(spec.qpcr)[rownames(sigtab),], "matrix"))
+
+all(rowMeans(counts(phyl_dds, normalized = TRUE, replaced = TRUE))==phyl.res$baseMean) #if there were outliers, it should have returned FALSE
+
+all(rowMeans(counts(spec_dds, normalized = TRUE, replaced = TRUE))==spec.res$baseMean) #if there were outliers, it should have returned FALSE
+```
+
+You can also use `contrast` to extract the responds of different covariates in the model:
+
+```R
+# Phylum tables
+
+gb.ct = results(phyl_dds, lfcThreshold = 0, contrast = list("gbYes")) %>% data.frame %>% filter(padj <= 0.05)
+dss.ct = results(phyl_dds, lfcThreshold = 0, contrast = list("dssYes")) %>% data.frame %>% filter(padj <= 0.05)
+gbdss.ct = results(phyl_dds, lfcThreshold = 0, contrast = list("gbYes.dssYes")) %>% data.frame %>% filter(padj <= 0.05)
+
+# Species tables
+
+gb.ct.spec = results(spec_dds, lfcThreshold = 2, contrast = list("gbYes")) %>% data.frame %>% filter(padj <= 0.01)
+dss.ct.spec = results(spec_dds, lfcThreshold = 2, contrast = list("dssYes")) %>% data.frame %>% filter(padj <= 0.01)
+gbdss.ct.spec = results(spec_dds, lfcThreshold = 2, contrast = list("gbYes.dssYes")) %>% data.frame %>% filter(padj <= 0.01)
+```
+
+If you want to see the number of differentially abundant taxa between two treatments or their magnitude of change, you can do this:
+
+```R
+ #comparison between treatments in species levels
+dss.n <- dss.ct.spec %>% filter(abs(log2FoldChange) > 2, padj <=0.01 ) %>% rownames()
+gb.n <- gb.ct.spec %>% filter(abs(log2FoldChange) > 2, padj <=0.01 ) %>% rownames()
+gbdss.n <- gbdss.ct.spec %>% filter(abs(log2FoldChange) > 2, padj <=0.01 ) %>% rownames()
+
+# DSS vs GB comparison
+compare.dss.gb <- matrix(NA, nrow = length(dss.n), ncol = length(gb.n), dimnames = list(dss.n, gb.n))
+
+for(i in 1:length(dss.n)){
+    for(j in 1:length(gb.n)){
+        compare.dss.gb[i, j] = ifelse(dss.n[i] == gb.n[j], 1, 0)
+    }
+}
+
+#GBDSS vs GB comparison
+compare.gbdss.gb <-  matrix(NA, nrow = length(gbdss.n), ncol = length(gb.n), dimnames = list(gbdss.n, gb.n))
+
+for(i in 1:length(gbdss.n)){
+    for(j in 1:length(gb.n)){
+        compare.gbdss.gb[i, j] = ifelse(gbdss.n[i] == gb.n[j], 1, 0)
+    }
+}
+
+compare.dss.gb = compare.dss.gb %>% melt %>% filter(value > 0) %>% select (Var1) %>% pull %>% as.vector
+compare.gbdss.gb = compare.gbdss.gb %>% melt %>% filter(value > 0) %>% select (Var1) %>% pull %>% as.vector
+
+#Number of in-common species
+compare.dss.gb %>% length
+compare.gbdss.gb %>% length
+
+#Different species between gbdss and dss
+compare.gbdss.gb[!compare.gbdss.gb %in% compare.dss.gb]
+```
