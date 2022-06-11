@@ -1256,3 +1256,102 @@ ggsave("./Deseq_species/volc_deseq_gbdss_vs_ct.jpeg", device = "jpeg", dpi = 300
 
 ![volcano](https://github.com/farhadm1990/Microbiome_analysis/blob/main/Pix/volc_deseq_gbdss_vs_ct.jpeg) 
 > Figure 24. Volcano plot of differential abundance species. X axis represents Log2FoldChange and Y axis is -log10 of adjusted p-value.
+
+
+```R
+#plotting for the phylum alone
+theme_set(theme_bw())
+sigtabphyl = dss.ct %>% rownames_to_column("Phylum")
+
+#filtering results below 2 logFC
+#sigtabphyl = sigtabphyl[abs(sigtabphyl$log2FoldChange)>2,]
+
+#a costumized color scheme
+sigtabphyl = sigtabphyl %>% mutate(phyl.col = ifelse(log2FoldChange > 0, "increased", "decreased"))
+
+
+#filtering results above 0.01 padjust
+alpha = 0.05
+sigtabphyl = sigtabphyl[sigtabphyl$padj <=alpha,]
+# Phylum order
+x = tapply(sigtabphyl$log2FoldChange, sigtabphyl$Phylum, function(x) max(x))
+x = sort(x, TRUE)
+sigtabphyl$Phylum = factor(as.character(sigtabphyl$Phylum), levels=names(x))
+
+ggplot(sigtabphyl, aes(y=Phylum, x=log2FoldChange)) + 
+  geom_vline(xintercept = 0.0, color = "orange", size = 0.5, lty = 2) +
+geom_col( aes(fill = phyl.col), width = 1, show.legend = F, color = "white") +
+  theme(title = element_text(size = 15, color = "black", face = "bold"),text = element_text(size =15, face = "bold"), axis.text.x = element_text(angle = -90, hjust = 0, vjust=0.5, size = 12, face = "bold"),
+       axis.text.y = element_text(size = 13, face = "italic" )) + scale_x_continuous(limits = c(-30, 25),n.breaks = 10) + 
+           ggtitle("Log2FoldChange of Phylum, 
+DSS")  +  geom_text (mapping = aes(x=-23, y = 0.65, label = "FDR < 0.05, |LFC| > 0"), 
+ color = "red", size = 4) + scale_fill_manual(values = c(  "deepskyblue", "darkgray"))  +
+           geom_text(aes( label = round(log2FoldChange),2))
+            #geom_text(aes(x=log2FoldChange, y = Phylum, label = -log10(padj) %>% round(1)), nudge_y = 0.16, color = "black", size = 4) 
+ggsave("./Deseq_phylum/difabund_dss.jpeg", device = "jpeg", dpi = 300)
+```
+![waterfall](https://github.com/farhadm1990/Microbiome_analysis/blob/main/Pix/difabund_dss.jpeg)
+> Figure 25. Barplot of differentially abundance for phylum. 
+
+
+```R
+#plotting for the Species and Phylum
+
+theme_set(theme_bw())
+
+spec.taxa = tax_table(spec.qpcr)
+ 
+
+sigtabspec = cbind(as(dss.ct.spec, "data.frame"), as(spec.taxa[rownames(spec.taxa) %in% rownames(dss.ct.spec),], "matrix"))
+
+
+
+
+#a costumized color scheme
+phylcol=c('coral4', "darkorange",'gold','antiquewhite4', 'cornflowerblue', 'plum4',
+          'darkgoldenrod3','aquamarine4', 'cadetblue2', 'red', 'darkblue', 'Maroon', 'Gray',
+        'steelblue2','darkmagenta', 'tomato1', 'cyan4', 'darkgreen')
+
+colindex = data.frame(color = phylcol[1:length(unique(tax_table(spec.qpcr)[,2]))], phylum = sort(unique(tax_table(spec.qpcr)[,2])))
+
+
+phyla = unique(data.frame(tax_table(spec.qpcr)[,2])) %>% pull
+colors = c()
+for(i in phyla){
+   colors[i] = colindex[colindex$Phylum == i,1]
+}
+
+#filtering out the taxa below 2 LFC
+sigtabspec = sigtabspec[abs(sigtabspec$log2FoldChange)>2,]
+
+#filtering results above 0.01 padjust
+alpha = 0.01
+sigtabspec = sigtabspec[sigtabspec$padj <=alpha,]
+# Phylum order
+x = tapply(sigtabspec$log2FoldChange, sigtabspec$Phylum, function(x) max(x))
+x = sort(x, TRUE)
+sigtabspec$Phylum = factor(as.character(sigtabspec$Phylum), levels=names(x))
+
+
+           
+#Species reorder
+x = tapply(sigtabspec$log2FoldChange, sigtabspec$Species, function(x) max(x))
+x = sort(x, TRUE)
+sigtabspec$Species = factor(as.character(sigtabspec$Species), levels=names(x))
+           
+ggplot(sigtabspec, aes(y=Species, x=log2FoldChange, color=Phylum)) + 
+  geom_vline(xintercept = 0.0, color = "orange", size = 0.5, lty = 2) +
+  geom_point(size=3)+
+  theme(legend.text = element_text(face = "bold"), axis.text.x = element_text(angle = -90, hjust = 0, vjust=0.5, size = 12, face = "bold"),
+       axis.text.y = element_text(size = 9, face = "italic"), title = element_text(face = "bold") ) +
+           ggtitle("Log2FoldChange of Species 
+for DSS") + geom_text (mapping = aes(x=-25,
+       y =0.75, label = "FDR < 0.01, |LFC| > 2"), color = "red") + scale_x_continuous(limits = c(-31, 31),n.breaks = 10) + 
+           scale_y_discrete(expand = c(0.00005,0.8)) + scale_color_manual(values = colors) + ylab("Species")
+           #+ geom_text(aes( label = -log10(padj) %>% round(1)),inherit.aes = TRUE, nudge_y = 0.4, color = "black")
+ggsave("./Deseq_species/difabund_spec_dss.jpeg", device = "jpeg", dpi  = 300, height = 15, width = 12)
+
+
+```
+![diff.abund.dss](https://github.com/farhadm1990/Microbiome_analysis/blob/main/Pix/difabund_spec_dss.jpeg)
+> Figure 26. Waterfal plot of differentally abundant species for groups treated with DSS.
