@@ -1355,3 +1355,851 @@ ggsave("./Deseq_species/difabund_spec_dss.jpeg", device = "jpeg", dpi  = 300, he
 ```
 ![diff.abund.dss](https://github.com/farhadm1990/Microbiome_analysis/blob/main/Pix/difabund_spec_dss.jpeg)
 > Figure 26. Waterfal plot of differentally abundant species for groups treated with DSS.
+
+#
+
+## 8. Network-based (graph-based) analysis
+
+In this step you can make an association network between different taxa based on `Spearman` rank test with adjusted p-value.
+This is a costume function and as it doens't count for partial effects of taxa, you must only use it for visualization and not for validation of associations. #This function is dedicated to make graph/network based on the spearman (also pearson) correlation and the significant level of this correlation corrected for false dicorevy rate (FDR) by Benjamini-Hochberg (by default, other methods are also accepted. See the help sheet for `p.ajust()` function).
+The function is also able to perfomr these analysis with and without Centered-Log ration (CLR). For the input matrix, you can simply use the phyloseq object and the function will do the rest. If your want to make a graph based on an adjacency matrix (graph_type = "adjacency"), the function makes a correlation matrix, then performs an FDR q.value (adjsuted pvalue) test and after -log10 transformation of this matrix, it uses the lower triangle of the matrix as an adjacency matrix for the input. If you want to have a graph from a dataframe (graph_type = "dataframe"), the function perfomrs the aforementioned part, except it makes a network based on the most significantly correlated ASVs. Using dataframe as the parameter is recommended. 
+    
+`Treatment_prune`: if you want to break your dataset into the sublevels of the treatment, default is "TRUE".
+`treatment`: the column in your dataset with which you want to breack your dataset into sub-groups of treatments.
+`treat_level`: the level of your interest in the treatment column, which you want to split the dataset for.
+`top_n_taxa`: specifies the number of most diverse taxa based on their standard deviation
+`filtering_threshold`: number of the samples each ASV should appear in order to be passed through the filter.  
+`cor_threshold`: is for filtering the taxa with the absolute value of correlation below the threshold value (0.55)
+`sig_threshold`: is the significant alpha for the adjusted p.value. 
+`directed = ` is used for making the edge atributes. The Default is FALSE.    
+`graph_mode = ` is either directed or undirected and is used when graph_type is set to "adjacency"
+`taxa_level` : is for making the network for different taxa, default is Genus.
+`color_pallet`: is the pallet from which the color of the vertice will be chosen. The dfault is "qual", but it can also be 'div', 'qual', 'seq'.
+`edge_pos_color`: is the color given to the edges between ASVs with positive correlation. Default is cyan. 
+`edge_neg_color`: is the color given to the edges between ASVs with negative correlation. Default is red. 
+`treatment_prune`: if you want to prune your taxa according to a particular treatment. The defaule it FALSE. Therefore, the treatment argument will be ignored.
+`treatment`: if the treatment_prune argument is set to TRUE, treatment will be considered in the downstream analysis. the dfault is ct (control). But you can always cahnge it to one of your treatments. 
+    
+
+```R
+network_forger = function(data, treatment_prune = FALSE, treatment = "whatever", treat_level = "you.name.it", filtering_threshold = 30, 
+                          clr = TRUE, FDR_method = "BH", cor_method = c("spearman", "pearson", "kendall"), 
+                          cor_threshold = 0.55, sig_threshold = 0.01,
+                         directed = "FALSE", graph_mode= c("directed", "undirected"), graph_type = c("adjacency", "dataframe"), 
+                          taxa_level = "Genus", top_n_taxa = 500, color_pallet = c("qual", "div", "seq"),
+                          edge_pos_color = "cyan", edge_neg_color = "red"){
+
+#We need to include the required packages into the function
+
+if (!requireNamespace("BiocManager", quietly = TRUE)) {
+    install.packages("BiocManager")
+}
+for (pkg in c("devtools", "dada2", "phyloseq", "ALDEx2", )) {
+  if (!requireNamespace(pkg, quietly = TRUE)) {
+    BiocManager::install(pkg)
+  }
+}
+
+
+if(!requireNamespace("pacman", quietly = TRUE)){
+  install.packages("pacman")  
+    }
+
+    library("pacman")
+pacman::p_load(devtools,  phyloseq, tidyverse, igraph, visNetwork, microbiome, glue)
+
+library(phyloseq)
+library(igraph)
+#library(glue)
+library(microbiome)
+
+   
+
+
+#=============================================================#
+#in higher taxonomic levels (e.g. species level) we have alot of duplicated names, e.g. "uncultured_bacterium" belonging to different genera. so we must make a unique name based on their gennus
+#A function to create unique names for each ASV. It removes any NA in Order level then attempts to use the name of one level higher taxa for those 
+#who have similar names, e.g. uncultured_bacterium
+
+gloomer = function(ps = data, taxa_level = taxa_level, NArm = "TRUE"){
+    rank.names = c('Kingdom','Phylum', 'Class', 'Order', 'Family', 'Genus', 'Species')
+    
+
+#Sometimes in genus level, we might have multiple uncultured organisms, which if we want to make unique out of them for the species level it won't work since adding uncultured to uncultered is sill duplication. therefore if the taxa_level is set to species we first make a unique genus and then we go further to the speices
+
+#Removing unculured Family
+ps = subset_taxa(ps, !Family %in% c("uncultured", "NA"))
+    
+if(taxa_level == "Species") {
+    
+  physeq = tax_glom(physeq = ps, taxrank = taxa_level, NArm = NArm)
+    taxdat = tax_table(physeq)[, seq_along(rank.names[1:which(rank.names == taxa_level)])]
+    
+   taxdat = taxdat[complete.cases(taxdat),] %>% as.data.frame
+    otudat = otu_table(physeq)
+    
+#first take care of the uncultured genus
+taxdat[,6] = ifelse(taxdat[,6] == "uncultured", 
+       paste(taxdat[ , length(rank.names[1:which(rank.names=="Genus")])-1], "_", taxdat[,6]), paste(taxdat[,6]))
+
+spec1 = taxdat[, taxa_level] %>% as.vector
+spec2  = taxdat[, taxa_level] %>% as.vector
+
+    uni  = matrix(NA, ncol = length(spec2), nrow = length(spec1))
+    for(i in seq_along(spec1)){
+        for(j in seq_along(spec2)){
+    uni[i, j] = ifelse(spec1[i] == spec2[j] , "TRUE", "FALSE")
+    }
+        }
+
+rownames(uni) <-spec1
+colnames(uni) <- spec2   
+uni[upper.tri(uni, diag = TRUE)] = 0 #get rid of diagonals and upper triangle
+
+duplis = uni %>% melt %>% filter(value == "TRUE") 
+
+if(dim(duplis)[[1]] > 0) {
+duplis = uni %>% eshape2::melt %>% filter(value == "TRUE") %>% dplyr::select(1) %>% unique() %>% unlist %>% as.vector
+taxdat = taxdat %>% mutate( uni= ifelse(taxdat[, taxa_level] %in% duplis, 
+                    paste(taxdat[,length(rank.names[1:which(rank.names==taxa_level)])-1], "_", taxdat[,taxa_level]), taxdat[,taxa_level]))
+taxdat[, taxa_level] = taxdat[, "uni"]
+taxdat[, "uni"] <- NULL
+taxdat <- as.matrix(taxdat)   
+rownames(otudat) <- taxdat[rownames(taxdat) %in% rownames(otudat), taxa_level]
+rownames(taxdat) <- taxdat[, taxa_level]
+taxdat <- tax_table(taxdat)
+taxa_names(physeq) <- taxa_names(taxdat)
+tax_table(physeq) <- taxdat
+otu_table(physeq) <- otudat
+    
+} else {
+    
+taxdat <- as.matrix(taxdat) 
+taxdat <- tax_table(taxdat)
+rownames(otudat) <- taxdat[rownames(taxdat) %in% rownames(otudat), taxa_level]
+rownames(taxdat) <- taxdat[, taxa_level]
+taxdat <- tax_table(taxdat)
+taxa_names(physeq) <- taxa_names(taxdat)
+tax_table(physeq) <- taxdat
+otu_table(physeq) <- otudat
+    
+}
+#ps = phyloseq(otu_table(otudat, taxa_are_rows = T), tax_table(as.matrix(taxdat)), sample_data(physeq))
+
+    
+    
+#==========================================# 
+} else if (taxa_level == "Genus") {
+    
+    physeq = tax_glom(physeq = ps, taxrank = taxa_level, NArm = NArm)
+    taxdat = tax_table(physeq)[, seq_along(rank.names[1:which(rank.names == taxa_level)])]
+    
+   taxdat = taxdat[complete.cases(taxdat),] %>% as.data.frame
+    otudat = otu_table(physeq)
+    
+# take care of the uncultured genus
+taxdat[,6] = ifelse(taxdat[,6] == "uncultured", 
+       paste(taxdat[ , length(rank.names[1:which(rank.names=="Genus")])-1], "_", taxdat[,6]), paste(taxdat[,6]))
+
+  
+rownames(otudat) <- taxdat[rownames(taxdat) %in% rownames(otudat), taxa_level]
+rownames(taxdat) <- taxdat[taxdat[,taxa_level] %in% rownames(otudat), taxa_level]
+taxdat <- as.matrix(taxdat) 
+taxdat <- tax_table(taxdat)
+taxa_names(physeq) <- taxa_names(taxdat)
+tax_table(physeq) <- taxdat
+otu_table(physeq) <- otudat
+#ps = phyloseq(otu_table(otudat, taxa_are_rows = T), tax_table(as.matrix(taxdat)), sample_data(physeq))
+ 
+    
+    
+} else {
+    
+    
+physeq = tax_glom(physeq = ps, taxrank = taxa_level, NArm = TRUE)
+    taxdat = tax_table(physeq)[, seq_along(rank.names[1:which(rank.names == taxa_level)])]
+    
+taxdat = taxdat[complete.cases(taxdat),] %>% as.data.frame
+otudat = otu_table(physeq)
+    
+spec1 = taxdat[, taxa_level] %>% as.vector
+spec2  = taxdat[, taxa_level] %>% as.vector
+
+    uni  = matrix(NA, ncol = length(spec2), nrow = length(spec1))
+    for(i in seq_along(spec1)){
+        for(j in seq_along(spec2)){
+    uni[i, j] = ifelse(spec1[i] == spec2[j] , "TRUE", "FALSE")
+    }
+        }
+
+rownames(uni) <-spec1
+colnames(uni) <- spec2   
+uni[upper.tri(uni, diag = TRUE)] = 0 #get rid of diagonals and upper triangle
+
+duplis = uni %>% melt %>% filter(value == "TRUE")
+
+if(dim(duplis)[[1]] > 0){#if there is not duplications, we can simply use the taxa names as the row name
+    
+    duplis = uni %>% melt %>% filter(value == "TRUE") %>% dplyr::select(1)%>% unique() %>% unlist %>% as.vector
+taxdat = taxdat %>% mutate( uni= ifelse(taxdat[, taxa_level] %in% duplis, 
+                    paste(taxdat[,length(rank.names[1:which(rank.names==taxa_level)])-1], "_", taxdat[,taxa_level]), taxdat[,taxa_level]))
+    
+taxdat[, taxa_level] = taxdat[, "uni"]
+taxdat[, "uni"] <- NULL
+taxdat <- as.matrix(taxdat)   
+rownames(otudat) <- taxdat[rownames(taxdat) %in% rownames(otudat), taxa_level]
+rownames(taxdat) <- taxdat[, taxa_level]
+taxdat <- tax_table(taxdat)
+taxa_names(physeq) <- taxa_names(taxdat)
+tax_table(physeq) <- taxdat
+otu_table(physeq) <- otudat
+} else {
+
+taxdat <- as.matrix(taxdat) 
+taxdat <- tax_table(taxdat)
+rownames(otudat) <- taxdat[rownames(taxdat) %in% rownames(otudat), taxa_level]
+rownames(taxdat) <- taxdat[, taxa_level]
+taxdat <- tax_table(taxdat)
+taxa_names(physeq) <- taxa_names(taxdat)
+tax_table(physeq) <- taxdat
+otu_table(physeq) <- otudat
+}
+#ps = phyloseq(otu_table(otudat, taxa_are_rows = T), tax_table(as.matrix(taxdat)), sample_data(physeq))
+ 
+
+}
+return(physeq) 
+    }
+#=================================================================================================#
+#=================================================================================================#
+
+#sometimes you want to make the graph for only one level of your treatments, e.g. only for healthy gourps or only for gorups treated with DSS
+if(treatment_prune == FALSE){
+    
+    
+    physeq = gloomer(data, taxa_level = taxa_level, NArm = TRUE)
+      
+    #making a rel.abund df to be passed on vertices latter on
+    asv = otu_table(physeq)
+           
+       
+        
+} else if(treatment_prune == "TRUE"){
+    
+    vect.id = sample_data(data)[,treatment] %>% pull %>% unfactor == treat_level
+    physeq = prune_samples(vect.id, data) 
+    
+
+        
+   #Aglomerating the taxa to the specified taxonomic level
+    physeq = gloomer(physeq, taxa_level = taxa_level, NArm = TRUE)
+      
+    #making a rel.abund df to be passed on vertices latter on
+    asv = otu_table(physeq)
+    
+
+
+    
+  }
+
+
+    
+
+asv = asv[!rownames(asv) %in% c("NA", "Unknown","", "uncharacterized", "unassigned", "unknown", "uncultured"), ] #to remove Unknown bacteria 
+asv.relabund = asv %>% data.frame%>% mutate(average = rowSums(asv)/ncol(asv),
+    rel.abund = average/sum(average)*100)  %>% dplyr::select(dim(asv)[[2]]+2)#this is how I select the last column (rel.abund) 
+    
+#Filtering the ASVs who appeared in less than 30% of the samples out of the dataset
+threshold = filtering_threshold
+index = asv
+index[asv > 0] = 1
+
+asv.filt = asv[rowSums(index)/ncol(index)*100 >= threshold, ]
+
+if(clr == TRUE){ #if we want to make the correlation matrix out of cetered-log ratio matrix
+##Network based on cetnered log-ratio transformation
+#There are two problems with building networkd with simple correlation approach: 
+#first, correlations can be distorted when applied to normalized or rarefied sequencing data and second, it is not clear how to select a 
+#meaningful threshold on their strength. In addition, the plotting code did not distinguish between positive and negative edges. As you know, normalization 
+#or rarefaction constrains the total sample sum and results in compositional data. The constraint can introduce correlations that are absent in the real data. 
+#However, we have to normalize or rarefy data, since otherwise correlations will be driven by sequencing depth differences. 
+#There are two ways to deal with this compositionality problem in microbial network construction.
+#The first is to transform the data and the second is to use association measures that are not affected by compositionality. Here, we will look at the first option. 
+#In the CLR transform, each abundance value is divided by the geometric mean of its sample and then a logarithm is taken. The geometric mean is the Sth-root of the product
+#of all values in a sample, where S is the number of the species. When you look at the CLR-transformed matrix, you will notice that it now contains negative values. 
+#These negative values rule out a number of association measures that assume data to be positive, such as the Bray-Curtis dissimilarity and the Kullback-Leibler dissimilarity.
+
+# estimate the the geometric means
+geom.mean = function (x) {    
+    return (exp(mean(log(x))))
+}
+
+#estimating the centrered log ratio
+
+asv.clr = matrix(0, nrow = nrow(asv.filt), ncol = ncol(asv.filt))
+for(i in 1:ncol(asv.filt)) {
+    samps = asv.filt[,i] #first obtain the samples
+    non.zeros = which(samps>0)
+    g = geom.mean(samps[non.zeros])
+    asv.clr [non.zeros, i] = log(samps[non.zeros]/g)
+}
+rownames(asv.clr) = rownames(asv.filt)
+colnames(asv.clr ) = colnames(asv.filt)
+    
+#Making a correlation matrix
+cor_main = Hmisc::rcorr(t(asv.clr), t(asv.clr), type = cor_method)
+
+cor.pval = cor_main$P %>% as.matrix 
+cor = cor_main$r %>% as.matrix
+
+#making the adjausted pvalue
+q.vals.matrix = cor.pval
+p.vals = cor.pval[lower.tri(cor.pval)]
+q.vals = p.adjust(p.vals, method = FDR_method)
+q.vals.matrix[lower.tri(q.vals.matrix)] = q.vals 
+    
+# -log10 transformation of q.values
+pseudocount = 0.0000000001
+sig.threshold = -1*log10(sig_threshold) #this is equivalent to p value = 0.01
+q.vals.matrix[q.vals ==0] = pseudocount
+q.vals.matrix = -1*log10(q.vals.matrix)
+q.vals.matrix[q.vals.matrix < sig.threshold] = 0
+q.vals.matrix[upper.tri(q.vals.matrix, diag = TRUE)] = 0 #we get rid of the upper triangle
+q.vals.matrix[q.vals.matrix == "Inf"] <- 0
+#Now, we have filled an adjacency matrix, which we could threshold directly on the q-values to build the network. 
+#However, there is a problem. In an adjacency matrix, a zero means an absence of the edge and a one means its presence. 
+#But a q-value of zero is highly significant and we do not want to loose its corresponding edge! This is why we convert 
+#q-values into significances. A significance is the negative decadic logarithm of a p- or q-value and has the opposite 
+#interpretation: the lower the p-value, the higher the significance and the more significant is the edge. We still have 
+#another problem: if we take the logarithm of a q-value of zero, we get a negative infinity. One way to deal with this is to add a pseudocount
+#to zero q-values, which will define an upper bound for the edge significance.   
+    
+
+
+    
+#making the graph from adjacency matrix    
+if(graph_type == "adjacency") {
+    
+    
+#you can make a graph from qval data as an adjacency matrix
+
+#we can now filter the qval matrix based on the top n-taxa.
+sds <- rowSds(q.vals.matrix, na.rm = TRUE)
+o <- order(sds, decreasing = TRUE)[1:top_n_taxa]#ordering the rows based on their standard deviation.
+    
+    
+graph.adjace = graph_from_adjacency_matrix(q.vals.matrix[o, o], mode = graph_mode)#graph of qval data. however this is not what we must do 
+graph.adjace = delete.vertices(graph.adjace, degree(graph.adjace)==0)#to deleted zero vertices
+graph.adjace = delete_edges(graph = graph.adjace, edges = E(graph.adjace)[which_multiple(graph.adjace)])    
+
+print("Done! Graph is based on adjacency q.value matrix from the CLR data")    
+}
+#Making network of spearman correlation
+#We do plot only those with significant q.value and non-zero correlation. 
+    
+else if(graph_type == "dataframe"){ #making the graph from data.frame  
+ 
+#we can now filter the correlation matrix based on the top n-taxa.
+sds <- rowSds(cor, na.rm = TRUE)
+o <- order(sds, decreasing = TRUE)[1:top_n_taxa]
+    
+    
+#making a long format of the qvals matrix and removing unknown taxa
+    
+    
+cor[upper.tri(cor, diag = TRUE)]<-0
+long.cor <- reshape2::melt(cor[o, o], value.name = "cor", varnames = c("from", "to")) %>% filter(!cor ==0)  
+
+#making a long dataset for the qvals
+sds <- rowSds(q.vals.matrix, na.rm = TRUE)
+o <- order(sds, decreasing = TRUE)[1:top_n_taxa]
+    
+long.qval = reshape2::melt(q.vals.matrix[o, o], value.name = "qval", varnames = c("from", "to")) %>% 
+filter(!qval ==0) %>% filter(!qval %in% "Inf")
+
+#making an index for identifying the significant correlations
+from.cor = long.cor$from
+to.cor = long.cor$to
+from.qval = long.qval$from
+to.qval = long.qval$to
+index.cor = paste(from.cor, to.cor) %>% data.frame
+index.qval = paste(from.qval, to.qval) %>% data.frame
+long.cor = data.frame(long.cor, index=index.cor$.)
+long.cor = long.cor %>% distinct(index, cor,  .keep_all = TRUE)#removing duplicates in the index
+long.qval = data.frame(long.qval, index=index.qval$.)
+long.qval = long.qval %>% distinct(index, .keep_all = TRUE)
+
+#correlation long dataset for control
+cor.filt = long.cor[long.cor$index %in% long.qval$index, ] %>% distinct(index, .keep_all = TRUE)
+
+#qval for correlation long dataset
+qval.filt = long.qval[long.qval$index %in% cor.filt$index,] %>% distinct(index, .keep_all = TRUE)
+
+#removing the indices
+cor.filt$index <- NULL
+qval.filt$index <- NULL
+    
+#converting adjacency matrix of the qvals into a dataframe and making the network from a dataframe.
+
+edge =cor.filt[abs(cor.filt$cor)>cor_threshold,]#we only choose the strongest correlations (> 0.55)
+#edge = edge %>% filter(!duplicated(cor)) #Here we remove the loops (A->C = C->A)
+edge$from <-edge$from %>% unfactor %>% factor #for some reason the level of the new dimention was not changed
+edge$to <- edge$to %>% unfactor %>% factor
+    
+#Sanity check to remove correlation of ASVs to themselves
+edge = edge[!unfactor(edge$from) == unfactor(edge$to),]
+
+#node_met = sample_data(physeq)
+
+#making the network from the dataframe
+graph.df = graph_from_data_frame(edge, directed = FALSE)
+    
+#removing the multiple edges from the graph, i.e. those who go twice
+graph.df = delete_edges(graph = graph.df, edges = E(graph.df)[which_multiple(graph.df)])
+
+
+#Vertice attributes
+V(graph.df)$degree =degree(graph.df, mode = "all")
+V(graph.df)$label = V(graph.df)$name#create label for the network
+V(graph.df)$eigen <- evcent(graph.df)$vector
+V(graph.df)$betweeness <- betweenness(graph.df, directed=FALSE)
+V(graph.df)$rel.abund <- asv.relabund$rel.abund[rownames(asv.relabund) %in% names(V(graph.df))]
+#V(graph.df)$treat <- levels(node_met$treatment)
+#V(graph.df)$sampleID <- rownames(node_met)
+    
+#Edge atributes
+E(graph.df, directed = directed)$direction <- ifelse(E(graph.df)$cor[1]>0, "pos", "neg") 
+E(graph.df, directed = directed)$color <- ifelse(E(graph.df)$cor>0, edge_pos_color, edge_neg_color)
+E(graph.df, directed = directed)$weight =round(abs(E(graph.df)$cor), 2)
+
+edge$cor <- round(edge$cor, 2)
+    
+#making a name index for the phylums to be painted on the vectors
+taxa.names = c("Kingdom", "Phylum", "Class", "Order", "Family", "Genus", "Species")
+color.index = c("King.col", "Phyl.col", "Class.col", "Ord.col", "Fam.col", "Gen.col", "Spec.col")
+    
+#making a color vector for the taxa to be painted on the vertices
+library(RColorBrewer)
+
+#first make a matrix with colors and taxa level
+pals = brewer.pal.info[brewer.pal.info$category %in% color_pallet,]
+col_vector = unlist(mapply(brewer.pal, pals$maxcolors, rownames(pals))) %>% unique
+
+if(taxa_level == "Species"){
+    
+    taxa.table = taxdat[complete.cases(taxdat), seq(which(taxa.names %in% taxa_level))]
+    
+
+} else { 
+    taxa.table = tax_table(physeq)[complete.cases(tax_table(physeq)),seq(which(taxa.names %in%taxa_level))]
+    taxa.table = taxa.table[!rownames(taxa.table)%in%"Unknown",]
+}
+    
+    
+colindex=matrix(NA, nrow = nrow(taxa.table), ncol = ncol(taxa.table))#making different taxa dataframe correspondent to the name of our "From" vertex names.
+ for(j in 1:ncol(colindex)){
+    colindex[,j] = col_vector[as.numeric(as.factor(taxa.table[, j]))] 
+      
+ } 
+
+colnames(colindex) = color.index[seq(ncol(colindex))]
+rownames(colindex) = rownames(taxa.table)
+colindex = cbind(taxa.table, colindex)
+
+if(taxa_level == "Kingdom"){
+    
+
+for(n in taxa.names[1:ncol(taxa.table)]){
+            for(m in color.index[1:ncol(taxa.table)]){
+                
+            vertex_attr(graph.df, n)= colindex[rownames(colindex) %in% names(V(graph.df)),n] %>% as.vector
+            vertex_attr(graph.df, m)= colindex[rownames(colindex) %in% names(V(graph.df)),m] %>% as.vector
+            
+ 
+}
+    } 
+    
+} else if (taxa_level == "Phylum") {
+
+for(n in taxa.names[1:ncol(taxa.table)]){
+            for(m in color.index[1:ncol(taxa.table)]){
+                
+            vertex_attr(graph.df, n)= colindex[rownames(colindex) %in% names(V(graph.df)),n] %>% as.vector
+            vertex_attr(graph.df, m)= colindex[rownames(colindex) %in% names(V(graph.df)),m] %>% as.vector
+            
+ 
+}
+    } 
+  
+} else if(taxa_level == "Order"){
+    
+ for(n in taxa.names[1:ncol(taxa.table)]){
+            for(m in color.index[1:ncol(taxa.table)]){
+                
+            vertex_attr(graph.df, n)= colindex[rownames(colindex) %in% names(V(graph.df)),n] %>% as.vector
+            vertex_attr(graph.df, m)= colindex[rownames(colindex) %in% names(V(graph.df)),m] %>% as.vector
+            
+ 
+}
+    }  
+    
+} else if(taxa_level == "Class") {
+  
+    for(n in taxa.names[1:ncol(taxa.table)]){
+            for(m in color.index[1:ncol(taxa.table)]){
+                
+            vertex_attr(graph.df, n)= colindex[rownames(colindex) %in% names(V(graph.df)),n] %>% as.vector
+            vertex_attr(graph.df, m)= colindex[rownames(colindex) %in% names(V(graph.df)),m] %>% as.vector
+            
+ 
+}
+    } 
+    
+} else if(taxa_level == "Family") {
+ 
+    for(n in taxa.names[1:ncol(taxa.table)]){
+            for(m in color.index[1:ncol(taxa.table)]){
+                
+            vertex_attr(graph.df, n)= colindex[rownames(colindex) %in% names(V(graph.df)),n] %>% as.vector
+            vertex_attr(graph.df, m)= colindex[rownames(colindex) %in% names(V(graph.df)),m] %>% as.vector
+            
+ 
+}
+    } 
+    
+} else if(taxa_level == "Genus"){
+
+for(n in taxa.names[1:ncol(taxa.table)]){
+            for(m in color.index[1:ncol(taxa.table)]){
+                
+            vertex_attr(graph.df, n)= colindex[rownames(colindex) %in% names(V(graph.df)),n] %>% as.vector
+            vertex_attr(graph.df, m)= colindex[rownames(colindex) %in% names(V(graph.df)),m] %>% as.vector
+            
+ 
+}
+    } 
+     
+} else if(taxa_level == "Species"){
+    
+
+    for(n in taxa.names[1:ncol(taxa.table)]){
+            for(m in color.index[1:ncol(taxa.table)]){
+                
+            vertex_attr(graph.df, n)= colindex[rownames(colindex) %in% names(V(graph.df)),n] %>% as.vector
+            vertex_attr(graph.df, m)= colindex[rownames(colindex) %in% names(V(graph.df)),m] %>% as.vector
+            
+ 
+}
+    } 
+
+
+    
+} else {
+print('Warning! the taxa name has not been entered correctly :( \n it must be one of this list: "Kingdom", "Phylum", "Class", "Order", "Family", "Genus", "Species"')
+}
+
+ #since the labels of the vertices are automatically oredered alphabetically and this would make problem with assigning right color to them, 
+    #we make the labels exactly similar to the taxa_level
+v.labs = factor(vertex_attr(graph.df, taxa_level), levels =  vertex_attr(graph.df, taxa_level))
+
+graph.df = set.vertex.attribute(graph.df, "label", value=paste(v.labs %>% levels)) 
+
+print(glue::glue("Your graph is ready! Graph is based on {cor_method} correlation matrix\n for CLR-transformed data, chosen based on BH q.value < 0.01")     )
+
+}
+
+if(graph_type == "adjacency") {
+       
+structure(list(asv.clr = asv.clr, cor.pval = cor.pval,  cor = cor, q.values = q.vals.matrix,
+               adjace.graph = graph.adjace), class = "GraphPack") 
+} else if(graph_type == "dataframe") {
+      structure(list(asv.clr = asv.clr, cor.pval = cor.pval, cor = cor, q.values = q.vals.matrix,
+                   graph = graph.df , cor.filt = cor.filt, edge.df = edge, colors = colindex), class = "GraphPack")   
+} else {
+   stop("Error! Check your input data. The graph must be either dataframe or adjacency matrix")  
+}
+   
+    
+#======================================================================NO CLT================================================================================================#   
+    
+} else if(clr == FALSE) {#if we want to make the correlation matrix out of absolute count matrix
+    
+#Making a correlation matrix
+cor_main = Hmisc::rcorr(t(asv.filt), t(asv.filt), type = cor_method)
+
+cor.pval = cor_main$P %>% as.matrix 
+cor = cor_main$r %>% as.matrix
+
+#making the adjausted pvalue
+q.vals.matrix = cor.pval
+p.vals = cor.pval[lower.tri(cor.pval)]
+q.vals = p.adjust(p.vals, method = FDR_method)
+q.vals.matrix[lower.tri(q.vals.matrix)] = q.vals 
+    
+# -log10 transformation of q.values
+pseudocount = 0.0000000001
+sig.threshold = -1*log10(sig_threshold) #this is equivalent to p value = 0.01
+q.vals.matrix[q.vals ==0] = pseudocount
+q.vals.matrix = -1*log10(q.vals.matrix)
+q.vals.matrix[q.vals.matrix < sig.threshold] = 0
+q.vals.matrix[upper.tri(q.vals.matrix, diag = TRUE)] = 0 #we get rid of the upper triangle
+q.vals.matrix[q.vals.matrix == "Inf"] <- 0
+   
+   
+    
+#making the graph from adjacency matrix    
+if(graph_type == "adjacency") {
+     #you can make a graph from qval data as an adjacency matrix
+sds <- rowSds(q.vals.matrix, na.rm = TRUE)
+o <- order(sds, decreasing = TRUE)[1:top_n_taxa]
+    
+graph.adjace = graph_from_adjacency_matrix(q.vals.matrix[o, o], mode = graph_mode)#graph of qval data. however this is not what we must do 
+graph.adjace = delete.vertices(graph.adjace, degree(graph.adjace)==0)#to deleted zero vertices
+graph.adjace = delete_edges(graph = graph.adjace, edges = E(graph.adjace)[which_multiple(graph.adjace)])   
+
+
+print("Your graph is ready!! Graph is based on adjacency q.value matrix for non-CLR data")    
+}
+
+else if(graph_type == "dataframe"){ #making the graph from data.frame  
+ #making a long format of the qvals matrix and removing unknown taxa
+    
+sds <- rowSds(cor, na.rm = TRUE)
+o <- order(sds, decreasing = TRUE)[1:top_n_taxa]
+    
+    
+cor[upper.tri(cor, diag = TRUE)]<-0
+long.cor <- reshape2::melt(cor[o, o], value.name = "cor", varnames = c("from", "to")) %>% filter(!cor ==0)  
+
+#making a long dataset for the qvals
+sds <- rowSds(q.vals.matrix, na.rm = TRUE)
+o <- order(sds, decreasing = TRUE)[1:top_n_taxa]
+    
+long.qval = reshape2::melt(q.vals.matrix[o, o], value.name = "qval", varnames = c("from", "to")) %>% 
+filter(!qval ==0) %>% filter(!qval %in% "Inf")
+
+#making an index for identifying the significant correlations
+from.cor = long.cor$from
+to.cor = long.cor$to
+from.qval = long.qval$from
+to.qval = long.qval$to
+index.cor = paste(from.cor, to.cor) %>% data.frame
+index.qval = paste(from.qval, to.qval) %>% data.frame
+long.cor = data.frame(long.cor, index=index.cor$.)
+long.cor = long.cor %>% distinct(index, cor,  .keep_all = TRUE)#removing duplicates in the index
+long.qval = data.frame(long.qval, index=index.qval$.)
+long.qval = long.qval %>% distinct(index, .keep_all = TRUE)
+
+#correlation long dataset for control
+cor.filt = long.cor[long.cor$index %in% long.qval$index, ] %>% distinct(index, .keep_all = TRUE)
+
+#qval for correlation long dataset
+qval.filt = long.qval[long.qval$index %in% cor.filt$index,] %>% distinct(index, .keep_all = TRUE)
+
+#removing the indices
+cor.filt$index <- NULL
+qval.filt$index <- NULL
+    
+#converting adjacency matrix of the qvals into a dataframe and making the network from a dataframe.
+
+edge =cor.filt[abs(cor.filt$cor)>cor_threshold,]#we only choose the strongest correlations (> 0.55)
+edge$from <-edge$from %>% unfactor %>% factor #for some reason the level of the new dimention was not changed
+edge$to <- edge$to %>% unfactor %>% factor
+    
+#Sanity check to remove correlation of ASVs to themselves
+edge = edge[!unfactor(edge$from) == unfactor(edge$to),]
+
+#node_met = sample_data(physeq)
+
+#making the network from the dataframe
+graph.df = graph_from_data_frame(edge, directed = FALSE)
+graph.df = delete_edges(graph = graph.df, edges = E(graph.df)[which_multiple(graph.df)])
+
+#Vertice attributes
+V(graph.df)$degree =degree(graph.df, mode = "all")
+V(graph.df)$label = V(graph.df)$name#create label for the network
+V(graph.df)$eigen <- evcent(graph.df)$vector
+V(graph.df)$betweeness <- betweenness(graph.df, directed=FALSE)
+V(graph.df)$rel.abund <- asv.relabund$rel.abund[rownames(asv.relabund) %in% names(V(graph.df))]
+#V(graph.df)$treat <- levels(node_met$treatment)
+#V(graph.df)$sampleID <- rownames(node_met)
+    
+#Edge atributes
+E(graph.df, directed = directed)$direction <- ifelse(E(graph.df)$cor[1]>0, "pos", "neg") 
+E(graph.df, directed = directed)$color <- ifelse(E(graph.df)$cor>0, edge_pos_color, edge_neg_color)
+E(graph.df, directed = directed)$weight =round(abs(E(graph.df)$cor), 2)
+
+edge$cor <- round(edge$cor, 2)
+    
+#making a name index for the phylums to be painted on the vectors
+taxa.names = c("Kingdom", "Phylum", "Class", "Order", "Family", "Genus", "Species")
+color.index = c("King.col", "Phyl.col", "Class.col", "Ord.col", "Fam.col", "Gen.col", "Spec.col")
+    
+#making a color vector for the taxa to be painted on the vertices
+library(RColorBrewer)
+
+#first make a matrix with colors and taxa level
+pals = brewer.pal.info[brewer.pal.info$category %in% color_pallet,]
+col_vector = unlist(mapply(brewer.pal, pals$maxcolors, rownames(pals))) %>% unique
+
+if(taxa_level == "Species"){
+    taxa.table = taxdat[complete.cases(taxdat), seq(which(taxa.names %in% taxa_level))]
+    
+} else { 
+    taxa.table = tax_table(physeq)[complete.cases(tax_table(physeq)),seq(which(taxa.names %in%taxa_level))]
+    taxa.table = taxa.table[!rownames(taxa.table)%in%"Unknown",]
+}
+    
+    
+colindex=matrix(NA, nrow = nrow(taxa.table), ncol = ncol(taxa.table))#making different taxa dataframe correspondent to the name of our "From" vertex names.
+ for(j in 1:ncol(colindex)){
+    colindex[,j] = col_vector[as.numeric(as.factor(taxa.table[, j]))] 
+      
+ } 
+
+colnames(colindex) = color.index[seq(ncol(colindex))]
+rownames(colindex) = rownames(taxa.table)
+colindex = cbind(taxa.table, colindex)
+
+if(taxa_level == "Kingdom"){
+    
+
+for(n in taxa.names[1:ncol(taxa.table)]){
+            for(m in color.index[1:ncol(taxa.table)]){
+                
+            vertex_attr(graph.df, n)= colindex[rownames(colindex) %in% names(V(graph.df)),n] %>% as.vector
+            vertex_attr(graph.df, m)= colindex[rownames(colindex) %in% names(V(graph.df)),m] %>% as.vector
+            
+ 
+}
+    } 
+    
+} else if (taxa_level == "Phylum") {
+
+for(n in taxa.names[1:ncol(taxa.table)]){
+            for(m in color.index[1:ncol(taxa.table)]){
+                
+            vertex_attr(graph.df, n)= colindex[rownames(colindex) %in% names(V(graph.df)),n] %>% as.vector
+            vertex_attr(graph.df, m)= colindex[rownames(colindex) %in% names(V(graph.df)),m] %>% as.vector
+            
+ 
+}
+    } 
+  
+} else if(taxa_level == "Order"){
+    
+ for(n in taxa.names[1:ncol(taxa.table)]){
+            for(m in color.index[1:ncol(taxa.table)]){
+                
+            vertex_attr(graph.df, n)= colindex[rownames(colindex) %in% names(V(graph.df)),n] %>% as.vector
+            vertex_attr(graph.df, m)= colindex[rownames(colindex) %in% names(V(graph.df)),m] %>% as.vector
+            
+ 
+}
+    }  
+    
+} else if(taxa_level == "Class") {
+  
+    for(n in taxa.names[1:ncol(taxa.table)]){
+            for(m in color.index[1:ncol(taxa.table)]){
+                
+            vertex_attr(graph.df, n)= colindex[rownames(colindex) %in% names(V(graph.df)),n] %>% as.vector
+            vertex_attr(graph.df, m)= colindex[rownames(colindex) %in% names(V(graph.df)),m] %>% as.vector
+            
+ 
+}
+    } 
+    
+} else if(taxa_level == "Family") {
+ 
+    for(n in taxa.names[1:ncol(taxa.table)]){
+            for(m in color.index[1:ncol(taxa.table)]){
+                
+            vertex_attr(graph.df, n)= colindex[rownames(colindex) %in% names(V(graph.df)),n] %>% as.vector
+            vertex_attr(graph.df, m)= colindex[rownames(colindex) %in% names(V(graph.df)),m] %>% as.vector
+            
+ 
+}
+    } 
+    
+} else if(taxa_level == "Genus"){
+
+for(n in taxa.names[1:ncol(taxa.table)]){
+            for(m in color.index[1:ncol(taxa.table)]){
+                
+            vertex_attr(graph.df, n)= colindex[rownames(colindex) %in% names(V(graph.df)),n] %>% as.vector
+            vertex_attr(graph.df, m)= colindex[rownames(colindex) %in% names(V(graph.df)),m] %>% as.vector
+            
+ 
+}
+    } 
+     
+} else if(taxa_level == "Species"){
+    
+
+    for(n in taxa.names[1:ncol(taxa.table)]){
+            for(m in color.index[1:ncol(taxa.table)]){
+                
+            vertex_attr(graph.df, n)= colindex[rownames(colindex) %in% names(V(graph.df)),n] %>% as.vector
+            vertex_attr(graph.df, m)= colindex[rownames(colindex) %in% names(V(graph.df)),m] %>% as.vector
+            
+ 
+}
+    } 
+
+     
+} else {
+print('Warning! the taxa name has not been entered correctly :( \n it must be one of this list: "Kingdom", "Phylum", "Class", "Order", "Family", "Genus", "Species"')
+}
+
+
+#since the labels of the vertices are automatically oredered alphabetically and this would make problem with assigning right color to them, 
+#we make the labels exactly similar to the taxa_level
+v.labs = factor(vertex_attr(graph.df, taxa_level), levels =  vertex_attr(graph.df, taxa_level))
+
+graph.df = set.vertex.attribute(graph.df, "label", value=paste(v.labs %>% levels))
+
+    
+print(glue::glue("Your graph is ready! Graph is based on {cor_method} correlation matrix\n for non-CLR-transformed data, chosen based on BH q.value < 0.01"))
+
+
+  
+}
+  
+        #extracting the goodies from the calculations
+if(graph_type == "adjacency") {
+       
+structure(list(asv.filt = asv.filt, cor.pval = cor.pval, cor = cor, q.values = q.vals.matrix,
+               adjace.graph = graph.adjace), class = "GraphPack") 
+} else if(graph_type == "dataframe") {
+      structure(list(asv.filt = asv.filt, cor.pval = cor.pval, cor = cor, q.values = q.vals.matrix, edge.df = edge,
+                   graph = graph.df , cor.filt = cor.filt, colors = colindex), class = "GraphPack")  
+   
+} else {
+    
+   stop("Error! Check your input data, it must be either dataframe or adjacency matrix") 
+
+}
+
+}
+
+   
+
+}
+
+```
+
+Testing the function:
+```R
+graphpack.ct = network_forger(data = pst.qPCR, treatment_prune = F, treatment = "treatment", treat_level = "CT", top_n_taxa =50,
+                      filtering_threshold = 30, clr = T, cor_method = "spearman", FDR_method = "BH", directed = FALSE,
+                      graph_mode = "undirected", graph_type = "dataframe", taxa_level = "Species", cor_threshold = 0.55, edge_neg_col =                             "red", edge_pos_col = "darkgreen")
+
+graph.gen.ct = graphpack.ct$graph
+
+# Visualizing the network
+library(visNetwork)
+V(graph.gen.ct)$color <- V(graph.gen.ct)$Phyl.col
+V(graph.gen.ct)$size <- V(graph.gen.ct)$rel.abund*15
+graphpack.ct$graph%>% visIgraph(physics = T, smooth = T, layout = "layout_in_circle", )
+```
