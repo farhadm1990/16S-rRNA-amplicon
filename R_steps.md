@@ -2431,8 +2431,8 @@ ggsave(plot = pheat.chem, filename = "./Heatmap/heatmap.chemicals_100_rotated.jp
 
 
 ---
-<p align="center">
-# The end!
+<p align="center"; face = "bold">
+ The end!
 </p>
 ***
 <p align="center">
