@@ -2206,3 +2206,225 @@ graphpack.ct$graph%>% visIgraph(physics = F, smooth = T, layout = "layout_in_cir
 ![graph.white](https://user-images.githubusercontent.com/70701452/173189711-2d1fa9d9-4165-444b-a05d-11f8a68781e7.png)
 ![imag.dark](https://user-images.githubusercontent.com/70701452/173189790-a8725b17-81fe-45d1-b6dc-1e8628df8eaf.png)
 > Figure 27. Association network of species in control group.
+
+#
+
+## 9. Analysis of chemical biomarkers for gut microbiome
+Here, we look into chmeical production of bacterial fermentation in colon derived from undigested carbohydrates (e.g. SCFAs) and protein (e.g. biogenic amines and iso.acids).
+
+```R
+#Making the chemical data frame
+chem.dat = read.table("./qPCR.metadata.chemicals.tsv", sep = "\t", header = T)[1:62,]
+chem.dat <- column_to_rownames(chem.dat, "SampleID")
+chem.dat <- chem.dat[complete.cases(chem.dat),]
+
+chemical.df = data.frame(sample_data(pst.qPCR)[rownames(sample_data(pst.qPCR)) %in% rownames(chem.dat), 
+                                               colnames(sample_data(pst.qPCR)) %in% c('litter', 'pig_no', 'Pen', 'treatment', 
+                                                                                        'sample_type', 'gb', 'dss', 'blok')],
+                        chem.dat[rownames(chem.dat) %in% rownames(sample_data(pst.qPCR)),
+                                                            colnames(chem.dat) %in% c('SCFA', 'Acetate', 'Propionate','Butyrate','Iso.acids','Valerate',
+                                                           'Biogenic.amines','Agmatin','Puterscin','Cadaverin')])
+#chemical.df = chemical.df[complete.cases(chemical.df)] #remove NA
+chemdat.scfa = chemical.df[, colnames(chemical.df) %in% c('litter', 'pig_no', 'Pen', "treatment", "sample_type", 'gb', 'dss', 'blok', "SCFA", "Acetate", 
+                                           "Propionate", "Butyrate", "Iso.acids", "Valerate")] %>% data.frame
+
+chemdat.biogenic = chemical.df[, colnames(chemical.df) %in% c("litter", "pig_no", "Pen", "treatment", "sample_type",'gb', 'dss', 'blok',
+                                                              "Biogenic.amines", "Agmatin", "Puterscin", "Cadaverin")]%>% data.frame
+                                                              
+#First we split the data into different segments since we have a significant effect of segment on the responses
+prox.pst = subset_samples(pst.qPCR, sample_type == "Proximal")
+dist.pst = subset_samples(pst.qPCR, sample_type == "Distal")
+feces.pst = subset_samples(pst.qPCR, sample_type == "Feces")
+
+#chemical data
+prox.chem = chemdat.scfa[chemdat.scfa$sample_type == "Proximal",]%>% data.frame
+dist.chem = chemdat.scfa[chemdat.scfa$sample_type == "Distal",]%>% data.frame
+feces.chem = chemdat.scfa[chemdat.scfa$sample_type == "Feces",]%>% data.frame
+```
+#
+### Generalized linear mixed effect model for chemicals
+
+#### proximal colon
+```R
+
+library(nlme)
+library(lme4)
+library(lmerTest)
+library(car)
+library(emmeans)
+library(multcomp)
+
+iso.lm = glmer(Iso.acids  ~ gb * dss + blok + (1|litter) + (1|pig_no), 
+           data = data.frame(prox.chem), family = Gamma(link = "log")) 
+iso.red = glmer(Iso.acids   ~ gb * dss   + (1|litter) + (1|pig_no), 
+           data = data.frame(prox.chem), family = Gamma(link = "log"))
+
+anova(iso.lm, iso.red)
+
+car::Anova(iso.red, type = 2) #analysis of variance by chi-square test
+
+iso.pair = pairs(emmeans(iso.red, ~ gb + dss), type = "response", adjust = "BH") %>% cld(Letters = letters) # type="response" can give you a back transformed pair-wise comparision of EMMs. 
+
+
+cld(emmeans(iso.red, ~  gb + dss, adjust = "BH",  type = "response"),Letters = letters) 
+
+```
+Extracting the fitted values
+```R
+#extracting fitted values
+fitted.scfa.prox = data.frame(SCFA = fitted(scfa.lm, "response"),
+            Butyrate = fitted(buty.lm, "response"),
+            Propionate = fitted(prop.red, "response"),
+            Acetate = fitted(acet.red, "response"),
+            Iso.acids = fitted(iso.red, "response"),
+            Valerat= fitted(valer.red, "response"))
+#fitted.scfa.prox = data.frame(prox.chem[rownames(prox.chem) %in% 
+ #       rownames(fitted.scfa.prox),1:7], fitted.scfa.prox)
+#pairwise comparisons
+pairs.sfa.prox = list(scfa = scfa.pair, butyrate = buty.pair,
+                      propionate = prop.pair, valerate = val.pair, 
+                      acetate = acet.pair, iso.acids = iso.pair)
+```
+
+You can do do the same for `distal colon` and `feces` samples and make a final `boxplot` out of responses.
+
+```R
+library(ggpubr)
+
+chemdat.scfa %>% dplyr::select(5, 6, 9:14) %>% melt %>% filter(sample_type %in% "Proximal") %>% ggplot(aes(x = treatment, y = value)) + 
+geom_boxplot(aes(fill = treatment), outlier.color = NA) + facet_wrap(~ variable, scale = "free_y", nrow = 1) + labs(fill = "Treatment") + 
+theme_bw() + theme(axis.title.x = element_text(face = "bold"),
+axis.title.y = element_text(face = "bold"), axis.text.x = element_text(face = "bold"), 
+                   legend.title = element_text(face = "bold")) + xlab("Treatment") + ylab("Concentration, mmol/Kg wet sample") + 
+scale_fill_manual(values = c("deeppink1", "deepskyblue", "darkorange",  "springgreen4")) + ggtitle("Proximal") + 
+geom_jitter(color = "black", alpha = 0.4, size = 1, show.legend = F, position =  position_jitter(0.1)) +
+scale_color_manual(values = c("deeppink1", "deepskyblue", "darkorange",  "springgreen4"))
+
+ggsave("./Chemicals/proximal.scfa.jpeg", width = 14, height = 6, dpi = 300, device = "jpeg")
+
+chemdat.scfa %>% dplyr::select(5, 6, 9:14) %>% melt %>% filter(sample_type %in% "Distal") %>% ggplot(aes(x = treatment, y = value)) + 
+geom_boxplot(aes(fill = treatment), outlier.color = NA) + facet_wrap(~ variable, scale = "free_y", nrow = 1) + labs(fill = "Treatment") + 
+theme_bw() + theme(axis.title.x = element_text(face = "bold"),
+axis.title.y = element_text(face = "bold"), axis.text.x = element_text(face = "bold"), 
+                   legend.title = element_text(face = "bold")) + xlab("Treatment") + ylab("Concentration, mmol/Kg wet sample") + 
+scale_fill_manual(values = c("deeppink1", "deepskyblue", "darkorange",  "springgreen4")) + ggtitle("Distal") + 
+geom_jitter(color = "black", alpha = 0.4, size = 1, show.legend = F, position =  position_jitter(0.1)) +
+scale_color_manual(values = c("deeppink1", "deepskyblue", "darkorange",  "springgreen4"))
+
+ggsave("./Chemicals/distal.scfa.jpeg", width = 14, height = 6, dpi = 300, device = "jpeg")
+
+chemdat.scfa %>% dplyr::select(5, 6, 9:14) %>% melt %>% filter(sample_type %in% "Feces") %>% ggplot(aes(x = treatment, y = value)) + 
+geom_boxplot(aes(fill = treatment), outlier.color = NA) + facet_wrap(~ variable, scale = "free_y", nrow = 1) + labs(fill = "Treatment") + 
+theme_bw() + theme(axis.title.x = element_text(face = "bold"),
+axis.title.y = element_text(face = "bold"), axis.text.x = element_text(face = "bold"), 
+                   legend.title = element_text(face = "bold")) + xlab("Treatment") + ylab("Concentration, mmol/Kg wet sample") + 
+scale_fill_manual(values = c("deeppink1", "deepskyblue", "darkorange",  "springgreen4")) + ggtitle("Feces") + 
+geom_jitter(color = "black", alpha = 0.4, size = 1, show.legend = F, position =  position_jitter(0.1)) +
+scale_color_manual(values = c("deeppink1", "deepskyblue", "darkorange",  "springgreen4"))
+
+ggsave("./Chemicals/feces.scfa.jpeg", width = 14, height = 6, dpi = 300, device = "jpeg")
+```
+![chemical data](https://user-images.githubusercontent.com/70701452/173190129-cc51a15c-09c7-42a9-8de5-ab000bb1038e.png)
+> Figure 28. Consentration of short-chain fatty acids (SCFA) produced by bacterial fermentation in colon. 
+
+#
+
+### Heatmap correlation of taxa with chemicals
+Here we make an association heatmap between chemical data and top 100 taxa.
+
+```R
+library("pheatmap")
+library(Biobase)
+
+#Data preparation
+physeq = gloomer(pst.qPCR, taxa_level = "Species")
+pst.qpcr.rel.spec = filter_taxa(physeq, function(x) sum(x>0)>0, TRUE)
+pst.qpcr.rel.spec = transform_sample_counts(pst.qpcr.rel.spec, function(x) x/sum(x)) #making a rel abund count data
+                                           
+chem.dat.qpcr = chemical.df[,9:18]
+chem.dat.qpcr = chem.dat.qpcr[complete.cases(chem.dat.qpcr),]
+chem.dat.qpcr = chem.dat.qpcr[, colSums(chem.dat.qpcr)> 0] 
+log.chem.dat = apply(chem.dat.qpcr, 2, function(x) log(x + 1)) # log transform chemical data
+                     
+asv.spec = as.matrix(otu_table(pst.qpcr.rel.spec))       
+ 
+asv.spec = asv.spec[!rownames(asv.spec) %in% c("Unknown", "uncultured", "Uncultured", "Unassigned", "NA"),] 
+                                  
+asv.qpcr = t(asv.spec)  
+asv.qpcr = asv.qpcr[rownames(asv.qpcr) %in% rownames(log.chem.dat),] 
+asv.qpcr = as(asv.qpcr,  "matrix")
+```
+#
+Corlation based on `Spearman` rank test.
+
+```R
+#cor chem taxa
+
+cor_main = Hmisc::rcorr(asv.qpcr, log.chem.dat, type = "spearman")
+
+rownames.tax = rownames(asv.spec)
+cor.chem.taxa = cor_main$r[rownames(cor_main$r) %in% rownames.tax , colnames(cor_main$r) %in% colnames(cor.chem.taxa)] 
+
+cor.pval = cor_main$P[rownames(cor_main$P) %in% rownames.tax , colnames(cor_main$P) %in% colnames(cor.chem.taxa)] 
+cor.qval = p.adjust(cor.pval, method = "BH")
+cor.qval = matrix(cor.qval, nrow = nrow(cor.pval), ncol = ncol(cor.pval))
+rownames(cor.qval ) <- rownames(cor.pval)
+colnames(cor.qval) <- colnames(cor.pval) 
+
+q.vals = matrix(cor.qval, ncol = ncol(cor.pval), nrow = nrow(cor.pval), dimnames = list(rownames(cor.pval), colnames(cor.pval)))
+#Adding significance signs to the qval matrix
+q.vals[cor.qval <0.05] = "*"
+q.vals[cor.qval >= 0.05] = ""
+
+#Making new column names for our corelation matrix
+colnames(cor.chem.taxa)<- c('SCFA', 'Acetate', 'Propionate', 'Butyrate', 'Iso.acids', 'Valerate', 'Biogenic.amines', 'Agmatin', 'Puterscin', 'Cadaverin')
+
+#Making a biobase expressionset
+
+asvdat = cor.chem.taxa #in the aassay dataset, we add our correlation matrix instead of the abundance matrix
+taxadat = AnnotatedDataFrame(as.data.frame(tax_table(physeq)))#taxa table
+
+x = ExpressionSet(assayData = asvdat,  featureData = taxadat )
+
+#First we chose the top 100 most variable asvs in the dataset and define a function rowCenter that centers each asv by subtracting the mean acorss columns. 
+sds <- rowSds(Biobase::exprs(x))
+o <- order(sds, decreasing = TRUE)[1:100]
+h_1 <- hclust(dist(Biobase::exprs(x)[o,]))
+h_2 <- hclust(dist(t(Biobase::exprs(x)[o,])))
+
+#making a phylum annotation and it only accepts one column dataframe
+row.annot = fData(x)[rownames(fData(x)) %in% rownames(Biobase::exprs(x)[o,]),] %>% dplyr::select(6, 2)
+
+#Making color index for the phylum annotation 
+library(RColorBrewer)
+phylcol=c('coral4', 'cyan','gold', 'tomato1', 'cornflowerblue', 'plum4',
+          'darkgoldenrod3','aquamarine4', 'cadetblue2', 'red', 'darkblue', 'Maroon', 'Gray',
+        'steelblue2','darkmagenta', 'antiquewhite4', "darkorange", 'darkgreen')
+
+phyl.col = data.frame(Phylum = unique(row.annot[,2]), phyl.col = phylcol[1:11])
+
+phyl.col = column_to_rownames(phyl.col, "Phylum") %>% as.matrix
+
+#Making a color index for the Genus annotation, only if you use it
+gen.col <- list(RColorBrewer::brewer.pal(9, name = "Set1"), RColorBrewer::brewer.pal(8, "Accent"), 
+     RColorBrewer::brewer.pal(8, "Dark2"), RColorBrewer::brewer.pal(12, "Paired"), RColorBrewer::brewer.pal(8, "Set2"), RColorBrewer::brewer.pal(12, "Set3")) %>% unlist
+
+set.seed(10)
+gen.col = data.frame(Genus = row.annot[,1], Gen.col = sample(gen.col, replace = F, size = 50)) %>% as.matrix
+rownames(gen.col) <- gen.col[,1] 
+
+
+
+pheat.chem = pheatmap( angle_col = 45, t(Biobase::exprs(x)[o,]), cluster_rows = F, cellheight = 15, 
+                      annotation_colors = list(Phylum = phyl.col[,1]), #Genus = gen.col[,2]),
+                      border_color = NA, annotation_col = row.annot%>% dplyr::select(2), 
+                      cellwidth = 15, cutree_cols = 7, number_color = "black",
+                      display_numbers = t(q.vals[rownames(q.vals) %in% rownames(Biobase::exprs(x)[o,]),]), fontsize_number = 15,
+                      Colv = as.dendrogram(h_2), cutcluster_rows = T, cluster_cols = T, 
+                      col = RColorBrewer::brewer.pal(11, "Spectral"), width = 8, height = 15, 
+                      main = "Heat map of spearman correlation between\n  top 100 Taxa and chemicals, clustered row and col") 
+
+ggsave(plot = pheat.chem, filename = "./Heatmap/heatmap.chemicals_100_rotated.jpeg", device = "jpeg", dpi = 300, height = 23, width = 30)
+```
+![heatmap chemicals_100_rotated](https://github.com/farhadm1990/Microbiome_analysis/blob/main/Pix/heatmap.chemicals_100_rotated.jpeg)
+> Figure 29. Heatmap association of top 100 taxa with chemicals produced by bacterial fermentation at species/ASV level. Each species is colored by its correlated phylum.
