@@ -1,4 +1,5 @@
-# ![alt text](https://github.com/farhadm1990/Microbiome_analysis/blob/main/Pix/Cover.jpg)
+# ![Cover](https://user-images.githubusercontent.com/70701452/173191454-a9f4e35b-9b32-4aba-a28b-dbf001471b7c.jpg)
+
 
 #  Microbiome Analysis 
 
