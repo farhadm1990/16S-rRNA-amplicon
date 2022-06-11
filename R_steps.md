@@ -1174,6 +1174,18 @@ gbdss.ct = results(phyl_dds, lfcThreshold = 0, contrast = list("gbYes.dssYes")) 
 gb.ct.spec = results(spec_dds, lfcThreshold = 2, contrast = list("gbYes")) %>% data.frame %>% filter(padj <= 0.01)
 dss.ct.spec = results(spec_dds, lfcThreshold = 2, contrast = list("dssYes")) %>% data.frame %>% filter(padj <= 0.01)
 gbdss.ct.spec = results(spec_dds, lfcThreshold = 2, contrast = list("gbYes.dssYes")) %>% data.frame %>% filter(padj <= 0.01)
+
+# Downloading the phylum table results
+
+write.table(gb.ct, "./gb_vs_ct.deseq.tsv", sep = ";")
+write.table(dss.ct, "./dss_vs_ct.deseq.tsv", sep = ";")
+write.table(gbdss.ct, "./gbdss_vs_ct.deseq.tsv", sep = ";")
+
+# Downloading the species table results
+
+write.table(gb.ct.spec, "./gb_vs_ct.deseq.tsv", sep = ";")
+write.table(dss.ct.spec, "./dss_vs_ct.deseq.tsv", sep = ";")
+write.table(gbdss.ct.spec, "./gbdss_vs_ct.deseq.tsv", sep = ";")
 ```
 
 If you want to see the number of differentially abundant taxa between two treatments or their magnitude of change, you can do this:
@@ -1212,3 +1224,35 @@ compare.gbdss.gb %>% length
 #Different species between gbdss and dss
 compare.gbdss.gb[!compare.gbdss.gb %in% compare.dss.gb]
 ```
+
+Now it is time to make some figures out of our results. You can do Volcano and waterfall plots or make heatmap for the `Log2FoldChange` and/or `adjusted p-vlalue`.
+
+```R
+#Volcano plot for species
+
+spec.gb.ct = results(spec_dds, contrast = list("gbYes.dssYes")) %>%data.frame %>% filter(!padj%in%NA)
+spec.gb.ct$Significant = ifelse(spec.gb.ct$padj < 0.01, "FDR < 0.05", "Not Sig")
+spec.gb.ct = rownames_to_column(spec.gb.ct, "Species")
+
+spec.gb.ct %>% ggplot(aes(x = log2FoldChange, -log10(pvalue))) + 
+geom_point( aes(color = Significant), size = 2) + 
+scale_color_manual(values = c("forestgreen", alpha("deeppink", 0.2))) + 
+theme_bw(base_size = 12) + theme(legend.position= "bottom") + 
+               geom_text_repel(data= top_n(spec.gb.ct[spec.gb.ct$log2FoldChange < -25 & -log10(spec.gb.ct$pvalue) > 9,], 
+               -2, log2FoldChange), #- means the lowest p.value (hihger significant)
+               aes(label = Species), 
+               size = 3, 
+               box.padding = unit(0.6, "lines"),
+               point.padding = unit(0, "lines"), max.overlaps = 3)+
+geom_text_repel(data= top_n(spec.gb.ct[spec.gb.ct$log2FoldChange > 25 & -log10(spec.gb.ct$pvalue) > 15,], 2, log2FoldChange),   #- means the lowest p.value (hihger significant)
+               aes(label = Species),  
+               size = 3, 
+               box.padding = unit(0.6, "lines"),
+               point.padding = unit(0, "lines"), max.overlaps = 3) +
+ggtitle (label = "Volcano Plot of the top 12 most significant log2FoldChange\n genus for GBDSS vs. CT") #+ scale_y_continuous(limits = c(-0.5, 40))
+
+ggsave("./Deseq_species/volc_deseq_gbdss_vs_ct.jpeg", device = "jpeg", dpi = 300)
+```
+
+![volcano](https://github.com/farhadm1990/Microbiome_analysis/blob/main/Pix/volc_deseq_gbdss_vs_ct.jpeg)
+> Figure 24. Volcano plot of differential abundance species. X axis represents Log2FoldChange and Y axis is -log10 of adjusted p-value.
