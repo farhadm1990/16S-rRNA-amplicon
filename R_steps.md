@@ -1,5 +1,4 @@
-After we created all artifacts in qiime2 such as ASV table, repseqs, unrooted tree, taxonomy table and metadata, now we can bring them into R by usign qiime2_R package in R. ![image](https://user-images.githubusercontent.com/70701452/173189711-2d1fa9d9-4165-444b-a05d-11f8a68781e7.png)
-
+After we created all artifacts in qiime2 such as ASV table, repseqs, unrooted tree, taxonomy table and metadata, now we can bring them into R by usign qiime2_R package in R. 
 ## 
 ## 1. Importing unrooted tree, ASV table and repseqs with the metadata to R using qiime2R package into R. 
 Using qiime2R package, we can bring all generated artifacts from qiime2 into R and integrate them into one phyloseq object by qiime_to_phyloseq()
@@ -2202,5 +2201,8 @@ graph.gen.ct = graphpack.ct$graph
 library(visNetwork)
 V(graph.gen.ct)$color <- V(graph.gen.ct)$Phyl.col
 V(graph.gen.ct)$size <- V(graph.gen.ct)$rel.abund*15
-graphpack.ct$graph%>% visIgraph(physics = T, smooth = T, layout = "layout_in_circle", )
+graphpack.ct$graph%>% visIgraph(physics = F, smooth = T, layout = "layout_in_circle", )
 ```
+![graph.white](https://user-images.githubusercontent.com/70701452/173189711-2d1fa9d9-4165-444b-a05d-11f8a68781e7.png)
+![imag.dark](https://user-images.githubusercontent.com/70701452/173189790-a8725b17-81fe-45d1-b6dc-1e8628df8eaf.png)
+> Figure 27. Association network of species in control group.
