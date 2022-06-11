@@ -2428,3 +2428,14 @@ ggsave(plot = pheat.chem, filename = "./Heatmap/heatmap.chemicals_100_rotated.jp
 ```
 ![heatmap chemicals_100_rotated](https://github.com/farhadm1990/Microbiome_analysis/blob/main/Pix/heatmap.chemicals_100_rotated.jpeg)
 > Figure 29. Heatmap association of top 100 taxa with chemicals produced by bacterial fermentation at species/ASV level. Each species is colored by its correlated phylum.
+
+
+#
+
+
+#
+# The end!
+
+
+#
+#Thank you for your attention :)
