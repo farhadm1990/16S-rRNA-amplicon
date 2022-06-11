@@ -39,4 +39,4 @@ This module includes the following steps
 #
 ### [8. Network-based (graph-based) analysis](https://github.com/farhadm1990/Microbiome_analysis/blob/main/R_steps.md#8-network-based-graph-based-analysis)
 #
-### [9. Analysis of chemical biomarkers for gut microbiome](https://github.com/farhadm1990/Microbiome_analysis/blob/main/R_steps.md#9-analysis-of-chemical-biomarkers-for-gut-microbiome)
+### [9. Analysis of chemical biomarkers for gut microbiome: Heatmap correlation](https://github.com/farhadm1990/Microbiome_analysis/blob/main/R_steps.md#9-analysis-of-chemical-biomarkers-for-gut-microbiome)
