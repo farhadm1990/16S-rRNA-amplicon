@@ -1,5 +1,5 @@
 # ![alt text](https://github.com/farhadm1990/Microbiome_analysis/blob/main/Pix/Cover.jpg)
-<center><b>centered</b></center>
+
 #  Microbiome Analysis 
 
 
