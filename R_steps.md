@@ -2325,7 +2325,7 @@ scale_color_manual(values = c("deeppink1", "deepskyblue", "darkorange",  "spring
 ggsave("./Chemicals/feces.scfa.jpeg", width = 14, height = 6, dpi = 300, device = "jpeg")
 ```
 ![chemical data](https://user-images.githubusercontent.com/70701452/173190129-cc51a15c-09c7-42a9-8de5-ab000bb1038e.png)
-> Figure 28. Consentration of short-chain fatty acids (SCFA) produced by bacterial fermentation in colon. 
+> Figure 28. Consentration of short-chain fatty acids (SCFA) produced by bacterial fermentation in proximal colon (A), in distal colon (B) and in feces (C). 
 
 #
 
