@@ -233,4 +233,4 @@ You can visualize your tree on [iTol](https://itol.embl.de/upload.cgi) which mig
 
 
 #
-You can now export the artifacts from `qiime` to `R` by `qiime2R` package in R and continue by folloiwng the `[steps in R](https://github.com/farhadm1990/Microbiome_analysis#steps-in-r)`
+You can now export the artifacts from `qiime` to `R` by `qiime2R` package in R and continue by folloiwng the **[steps in R](https://github.com/farhadm1990/Microbiome_analysis#steps-in-r)**
