@@ -885,11 +885,10 @@ set.seed(10)
 h <- with(data = data.frame(sample_data(pst.qPCR.log)), how(blocks = litter, nperm = 9999))
 wunifrac.disp <- vegan::betadisper(wunifrac.dist.qpcr.log, group = sample_data(pst.qPCR.log)$treatment, 
                                  type = "centroid")
-# Anova test
-anova(wunifrac.disp, permutations = h)
-#permutest(wunifrac.disp, permutation =h)
+# Permutational test for analysis of variance with pairwise comparison.
+permutest(wunifrac.disp, permutation =h, pairwise = T)
 ```
-![beta.disper](https://github.com/farhadm1990/Microbiome_analysis/blob/main/Pix/beta.disper.PNG)
+![image](https://user-images.githubusercontent.com/70701452/173353892-f8c2a473-792a-4cd2-833c-aeb4350e03d2.png)
 > Figure 15. Test statistics for variance homogeniety test. Betadisper test statistics are not significant, meaning that we can accept the null hypothesis that our groups have the same dispersions of variance. This means we can be confident that our adonis/dbrda result is maninly due to biological differences due to the treatment effect rather than differences in variance dispersions.
 
 
