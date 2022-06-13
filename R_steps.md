@@ -2355,7 +2355,7 @@ asv.qpcr = asv.qpcr[rownames(asv.qpcr) %in% rownames(log.chem.dat),]
 asv.qpcr = as(asv.qpcr,  "matrix")
 ```
 #
-Corlation based on `Spearman` rank test.
+Corelation based on `Spearman` rank test.
 
 ```R
 #cor chem taxa
@@ -2434,8 +2434,14 @@ ggsave(plot = pheat.chem, filename = "./Heatmap/heatmap.chemicals_100_rotated.jp
 <p align="center">
    The end! 
 </p>
+
 ---
+
 <p align="center">
  Thank you for your attention :) 
 </p>
 ---
+
+## [Go back to first page](https://github.com/farhadm1990/Microbiome_analysis/blob/main/R_steps.md)
+
+## [Home](https://github.com/farhadm1990/Microbiome_analysis#readme)
