@@ -23,17 +23,17 @@ This module includes the following steps
 
 # [Steps in **R**](https://github.com/farhadm1990/Microbiome_analysis/blob/main/R_steps.md)
 
-### [1. Importing unrooted tree, ASV table and repseqs with the metadata to R using qiime2R package into R.](https://github.com/farhadm1990/Microbiome_analysis/blob/main/R_steps.md#1-importing-unrooted-tree-asv-table-and-repseqs-with-the-metadata-to-r-using-qiime2r-package-into-r) 
+### [1. Importing unrooted tree, ASV table and repseqs with the metadata to R using qiime2R package into R](https://github.com/farhadm1990/Microbiome_analysis/blob/main/R_steps.md#1-importing-unrooted-tree-asv-table-and-repseqs-with-the-metadata-to-r-using-qiime2r-package-into-r) 
 #
 ### [2. Preprocessing and cleaning up the sequences](https://github.com/farhadm1990/Microbiome_analysis/blob/main/R_steps.md#2-preprocessing-and-cleaning-up-the-dataset)
 #
 ### [3. Alpha diversity](https://github.com/farhadm1990/Microbiome_analysis/blob/main/R_steps.md#3-alpha-diversity)
 #
-### [4. Statistical analysis on alpha diversity metrics.](https://github.com/farhadm1990/Microbiome_analysis/blob/main/R_steps.md#4-statistical-analysis-on-alpha-diversity-metrics-generalized-linear-mixed-effect-model-glmem)
+### [4. Statistical analysis on alpha diversity metrics](https://github.com/farhadm1990/Microbiome_analysis/blob/main/R_steps.md#4-statistical-analysis-on-alpha-diversity-metrics-generalized-linear-mixed-effect-model-glmem)
 #
-### [5. Beta diversity.](https://github.com/farhadm1990/Microbiome_analysis/blob/main/R_steps.md#5-beta-diversity-diversity-between-samples)
+### [5. Beta diversity](https://github.com/farhadm1990/Microbiome_analysis/blob/main/R_steps.md#5-beta-diversity-diversity-between-samples)
 #
-### [6. Statistical analysis on beta diversity metrics.](https://github.com/farhadm1990/Microbiome_analysis/blob/main/R_steps.md#6-statistical-analysis-on-beta-diversity-a-distance-based-redundancy-analysis-dbrda)
+### [6. Statistical analysis on beta diversity metrics: a distance-based redundancy analysis (dbRDA) model](https://github.com/farhadm1990/Microbiome_analysis/blob/main/R_steps.md#6-statistical-analysis-on-beta-diversity-a-distance-based-redundancy-analysis-dbrda)
 #
 ### [7. Differential abundance analysis of taxa by DESeq2](https://github.com/farhadm1990/Microbiome_analysis/blob/main/R_steps.md#7-differential-abundance-analysis-of-taxa-by-deseq2)
 #
