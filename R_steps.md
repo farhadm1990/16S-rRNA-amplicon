@@ -642,7 +642,7 @@ ven.diag = draw.quad.venn(col = "white", alpha = 0.75, area1 = 0+1+0+0+10+0+0+2,
 ggsave(plot = ven.diag, "./venn.taxa.phylum.jpeg", device = "jpeg", dpi = 500)                                            
 ```
 
-![alt text](https://github.com/farhadm1990/Microbiome_analysis/blob/main/Pix/venn.taxa.phylum.jpeg)
+![venn_diagram](https://github.com/farhadm1990/Microbiome_analysis/blob/main/Pix/venn.taxa.phylum.jpeg)
 > Figure 9. Venn diagram of shared phylum between treatments.
 
 
@@ -919,11 +919,17 @@ Distance-based Redundancy Analysis (dbRDA) is a Redundancy Analysis on the eigen
 set.seed(1990)
 h <- with(data = data.frame(sample_data(pst.qPCR.log)), how(blocks = litter, nperm = 9999))
 
-db.rda.wunifrac = vegan::dbrda(wunifrac.dist.qpcr.log ~  gb * dss + sample_type  + Condition(litter), 
-data = sample_data(pst.qPCR.log)%>%data.frame)#dbRDA does not do any permutation test
+db.rda.wunifrac = vegan::dbrda(wunifrac.dist.qpcr.log ~  gb * dss + Condition(litter), data = sample_data(pst.qPCR.log)%>%data.frame)    #Full model
+db.rda.wunifrac.gb = vegan::dbrda(wunifrac.dist.qpcr.log ~  gb + Condition(litter + dss), data = sample_data(pst.qPCR.log)%>%data.frame) #GB overall effect, dss effect as denominator to be removed from permutation
+db.rda.wunifrac.dss = vegan::dbrda(wunifrac.dist.qpcr.log ~ dss + Condition(litter + gb), data = sample_data(pst.qPCR.log)%>%data.frame) #DSS overall effect, dss effect as denominator to be removed from permutation
+db.rda.wunifrac #Treatments explained 39% of variance
+db.rda.wunifrac.gb #GB explained 5% of variance
+ db.rda.wunifrac.dss #dbRDA does not do any permutation test #DSS explained 31% of variance
 
-#but it is anova that does the permutations in order to generate the psudo-F statistics. 
-
+#But it is anova that does the permutations in order to generate the psudo-F statistics. 
+vegan::anova.cca(db.rda.wunifrac, permutations = h, by = "term")
+vegan::anova.cca(db.rda.wunifrac.gb, permutations = h, by = "term")
+anova.cca(db.rda.wunifrac.dss, permutations = h, by = "term")
 #inertia is the squared wunifrac distance here
 
 db.rda.wunifrac 
