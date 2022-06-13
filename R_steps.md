@@ -904,8 +904,8 @@ jpeg( "./Beta diversity/dispersion of variance_wunifrac.jpeg", quality = 100)
 plot(wunifrac.disp, col = c("deeppink1", "deepskyblue", "darkorange",  "springgreen4"), bty = "n",
   las = 1, main = "Dispersion of variance around the centroids, WUniFrac", sub=NULL,
   xlab = sprintf("PCo1 [%s%%]", round(eig.vals/sum(eig.vals)*100,0)[1]),
- ylab = sprintf("PCo2 [%s%%]", round(eig.vals/sum(eig.vals)*100,1)[2])); text("P = 0.09", 
-                                                               x = 0.15, y = -0.12, cex = 1.5)
+ ylab = sprintf("PCo2 [%s%%]", round(eig.vals/sum(eig.vals)*100,1)[2])); text(glue("P > {round(p.val.perm, 2)}"), 
+                                                               x = 0.15, y = -0.12, cex = 1.5, col = "red")
 ```
 
 ![beta.disper.pcoa](https://github.com/farhadm1990/Microbiome_analysis/blob/main/Pix/dispersion%20of%20variance_wunifrac.jpeg)
