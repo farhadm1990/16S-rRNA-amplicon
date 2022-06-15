@@ -2444,9 +2444,14 @@ ggsave(plot = pheat.chem, filename = "./Heatmap/heatmap.chemicals_100_rotated.jp
 
 <p align="center">
  Thank you for your attention :) 
+  
+ Please don't forget to cite the following Zenodo DOI if you want to use this workflow as your code reference: 
+
+[cite here](https://zenodo.org/record/6602599)
 </p>
+
 ---
 
-## [Go back to first page](https://github.com/farhadm1990/Microbiome_analysis/blob/main/R_steps.md)
+## [Top](https://github.com/farhadm1990/Microbiome_analysis/blob/main/R_steps.md)
 
 ## [Home](https://github.com/farhadm1990/Microbiome_analysis#readme)
