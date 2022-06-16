@@ -2446,7 +2446,7 @@ ggsave(plot = pheat.chem, filename = "./Heatmap/heatmap.chemicals_100_rotated.jp
  Thank you for your attention :) 
  </p>
  <p align="center">
- Please don't forget to cite us if you want to use this workflow as your code reference with this DOI: https://doi.org/10.5281/zenodo.6634627
+ Please don't forget to cite us if you want to use this workflow as your code reference with this DOI: https://doi.org/10.5281/zenodo.6651590
  </p>
 
 ---
