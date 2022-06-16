@@ -781,7 +781,7 @@ dist_methods <- unlist(distanceMethodList)
 print(dist_methods)
 ```
 
-You can create a metric distance scaling (MDS) also termed as Principal Coordinate Analysis (PCoA) or non-metric distance scaling (NMDS) plots to visualize beta diversity of your bacterial data on reduced dimentional plots. In this example we only do that for Weighted UniFrac Phylogenetic Distance by `ordinate` function from phyloseq package.
+You can create a metric distance scaling (MDS) also termed as Principal Coordinate Analysis (PCoA) or non-metric dimentional scaling (NMDS) plots to visualize beta diversity of your bacterial data on reduced dimentional plots. In this example we only do that for Weighted UniFrac Phylogenetic Distance by `ordinate` function from phyloseq package.
 
 ```R
 #Weighted UniFrac: based on log-transformed data 
