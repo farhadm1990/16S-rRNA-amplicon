@@ -35,7 +35,7 @@ This module includes the following steps
 #
 ### [6. Statistical analysis on beta diversity metrics: a distance-based redundancy analysis (dbRDA) model](https://github.com/farhadm1990/Microbiome_analysis/blob/main/R_steps.md#6-statistical-analysis-on-beta-diversity-a-distance-based-redundancy-analysis-dbrda)
 #
-### [7. Differential abundance analysis of taxa by DESeq2](https://github.com/farhadm1990/Microbiome_analysis/blob/main/R_steps.md#7-differential-abundance-analysis-of-taxa-by-deseq2)
+### [7. Differential abundance analysis of taxa by DESeq2](https://github.com/farhadm1990/Microbiome_analysis/blob/main/R_steps.md#7-differential-abundance-analysis-of-taxa-deseq2)
 #
 ### [8. Network-based (graph-based) analysis](https://github.com/farhadm1990/Microbiome_analysis/blob/main/R_steps.md#8-network-based-graph-based-analysis)
 #
