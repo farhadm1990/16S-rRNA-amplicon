@@ -1100,12 +1100,16 @@ Now that we found out the main effects of red meat consumption and DSS treatment
 #phyl.qpcr =  gloomer(ps = pst.qPCR, taxa_level = "Phylum", NArm = TRUE)
 #spec.qpcr = gloomer(pst.qPCR, taxa_level =  "Species", NArm = TRUE)
 
+
 #Creating the experimental design
+## first we want to see if the sample_type has any effect or can we remove it from the covariate list. for that we make a full model with both 
+#all the treatments and bloks. 
 coldat = sample_data(phyl.qpcr)[,1:8] %>% data.frame
 coldat$Pen <- factor(coldat$Pen, levels = c("pn1", "pn2", "pn3", "pn4"))
 coldat$blok <- relevel(coldat$blok, 1)
+
 #Here we can also do the factorial model.
-design = model.matrix(~ gb * dss + blok + sample_type, data = coldat)
+design = model.matrix(~ gb + dss + gb : dss + blok + sample_type, data = coldat)
 
 #since different litters have been used in different blocks, there is a rank defficiency for the model when it comes to the interaciton. 
 #Therefore, we remove those all-zero columns from our desing and use the updated desing for fitting the model
@@ -1113,36 +1117,85 @@ zeros = apply(design, 2, function(x) all(x==0))
 zeros = which(zeros)              
 #design = design[,-zeros]
 
-# Making a deseq artifact with the facrotial design             
-phyl_dds <- phyloseq_to_deseq2(phyl.qpcr, design = design )
-
-# Calculating geometric means prior to estimate size factors
+#Now we can fit our deseq model with the facrotial design             
+phyl_dds<-phyloseq_to_deseq2(phyl.qpcr, design =design ) #for phylum the deseq object is, phyl_dds
+#calculate geometric means prior to estimate size factors
 gm.mean = function(x, na.rm= TRUE) {
     exp(sum(log(x[x>0]), na.rm=na.rm)/length(x))
 }
 
 geo.mean = apply(counts(phyl_dds), 1, gm.mean)
 
-phyl_dds = estimateSizeFactors(phyl_dds, geoMeans = geo.mean)
+phyl_dds = estimateSizeFactors(phyl_dds, geoMeans = geo.mean)#size factor with geometric mean
+              phyl_dds<-DESeq(phyl_dds, test = "Wald", fitType = "parametric")
+phyl.red <- nbinomLRT(phyl_dds,  reduced = model.matrix(~ gb + dss + gb : dss + blok, data = coldat)) # we can see that sample_type had no sig effect, so removed from the model
 
+#updating the design
+design(phyl_dds) <- model.matrix(~ gb + dss + gb : dss + blok, data = coldat)  
 phyl_dds<-DESeq(phyl_dds, test = "Wald", fitType = "parametric")
-
-# You can do the same for the species
-
+              
+#converting species phylosq to deseq
 spec_dds<-phyloseq_to_deseq2(spec.qpcr, design  = design) #for phylum the deseq object is, phyl_dds
+#calculate geometric means prior to estimate size factors
+gm.mean = function(x, na.rm= TRUE) {
+    exp(sum(log(x[x>0]), na.rm=na.rm)/length(x))
+}
 geo.mean = apply(counts(spec_dds), 1, gm.mean)
 spec_dds = estimateSizeFactors(spec_dds, geoMeans = geo.mean)
 spec_dds<-DESeq(spec_dds, test = "Wald", fitType = "parametric")
+              spec.red <- nbinomLRT(spec_dds,  reduced = model.matrix(~ gb + dss + gb : dss + blok, data = coldat))
+#updating the design
+design(spec_dds) <- model.matrix(~ gb + dss + gb : dss + blok, data = coldat)  #no intercept (to get estimate for control)
+spec_dds<-DESeq(spec_dds, test = "Wald", fitType = "parametric")              
 
 
 ```
 
-You can now see the results anames by typing `resultsNames(phyl_dds)`, and based on that you can extract the results from the model.
+You can now see the results anames by typing `resultsNames(phyl_dds)`, and based on that you can extract the results from the model by specifying the `contrast`.
 
 ```R
-results(phyl_dds, name = "treatmentGB") %>% data.frame %>% filter(padj <= 0.05)
-results(phyl_dds, name = "treatmentDSS") %>% data.frame %>% filter(padj <= 0.05)
-results(phyl_dds, name = "treatmentGBDSS") %>% data.frame %>% filter(padj <= 0.01)
+#Phylum
+
+#interaction
+gb.dss = results(phyl_dds, contrast = c(0,0,0,0,0,1),lfcThreshold = 0) %>% data.frame %>% filter(padj < 0.05)
+inter.sig = rownames(gb.dss)#taxa that with significant interaction
+
+#making a new phyl.dds with only taxa which changed by interaction effect
+phyl.dds.inter = phyl_dds[rownames(phyl_dds) %in% inter.sig]
+
+#Pairwise comparison
+gb.vs.dss = results(phyl.dds.inter, contrast = c(0,1,1,0,0,0),lfcThreshold = 0) %>% data.frame %>% filter(padj < 0.05)
+gb.vs.gbdss = results(phyl.dds.inter, contrast = c(0,1,0,0,0,1),lfcThreshold = 0) %>% data.frame %>% filter(padj < 0.05)
+dss.vs.gbdss = results(phyl.dds.inter, contrast = c(0,0,1,0,0,1),lfcThreshold = 0) %>% data.frame %>% filter(padj < 0.05)
+gb.vs.ct = results(phyl.dds.inter, contrast = c(1,1,0,0,0,0),lfcThreshold = 0) %>% data.frame %>% filter(padj < 0.05)
+dss.vs.ct = results(phyl.dds.inter, contrast = c(1,0,1,0,0,0),lfcThreshold = 0) %>% data.frame %>% filter(padj < 0.05)
+gbdss.vs.ct = results(phyl.dds.inter, contrast = c(1,0,0,0,0,1),lfcThreshold = 0) %>% data.frame %>% filter(padj < 0.05)
+#main effect of gb
+gb.main = results(phyl_dds, contrast = c(0,1,0,0,0,0.5),lfcThreshold = 0) %>% data.frame %>% filter(padj < 0.05)
+gb.main = gb.main[!rownames(gb.main) %in% inter.sig, ]#taxa significant for across groups without interaction
+#main effect of dss
+dss.main = results(phyl_dds, contrast = c(0,0,1,0,0,0.5),lfcThreshold = 0) %>% data.frame %>% filter(padj < 0.05)
+dss.main = dss.main[!rownames(dss.main) %in% inter.sig, ]
+
+#Species
+#interaction
+gb.dss.spec = results(spec_dds, contrast = c(0,0,0,0,0,1),lfcThreshold = 2) %>% data.frame %>% filter(padj < 0.01)
+inter.sig.spec = rownames(gb.dss.spec)#taxa that with significant interaction
+
+#making a new phyl.dds with only taxa which changed by interaction effect
+spec.dds.inter = spec_dds[rownames(spec_dds) %in% inter.sig.spec]
+
+#Pairwise comparison
+gb.vs.dss.spec = results(spec.dds.inter, contrast = c(0,1,1,0,0,0),lfcThreshold = 2) %>% data.frame %>% filter(padj < 0.01)
+gb.vs.gbdss.spec = results(spec.dds.inter, contrast = c(0,1,0,0,0,1),lfcThreshold = 2) %>% data.frame %>% filter(padj < 0.01)
+dss.vs.gbdss.spec = results(spec.dds.inter, contrast = c(0,0,1,0,0,1),lfcThreshold = 2) %>% data.frame %>% filter(padj < 0.01)
+
+#main effect of gb
+gb.main.spec = results(spec_dds, contrast = c(0,1,0,0,0,0.5),lfcThreshold = 2) %>% data.frame %>% filter(padj < 0.01)
+gb.main.spec = gb.main.spec[!rownames(gb.main.spec) %in% inter.sig.spec, ]#taxa significant for across groups without interaction
+#main effect of dss
+dss.main.spec = results(spec_dds, contrast = c(0,0,1,0,0,0.5),lfcThreshold = 2) %>% data.frame %>% filter(padj < 0.01)
+dss.main.spec = dss.main.spec[!rownames(dss.main.spec) %in% inter.sig.spec, ]
 ```
 
 
@@ -1163,34 +1216,6 @@ sigtab.spec=cbind(as(sigtab, "data.frame"), as(tax_table(spec.qpcr)[rownames(sig
 all(rowMeans(counts(phyl_dds, normalized = TRUE, replaced = TRUE))==phyl.res$baseMean) #if there were outliers, it should have returned FALSE
 
 all(rowMeans(counts(spec_dds, normalized = TRUE, replaced = TRUE))==spec.res$baseMean) #if there were outliers, it should have returned FALSE
-```
-
-You can also use `contrast` to extract the responds of different covariates in the model:
-
-```R
-# Phylum tables
-
-gb.ct = results(phyl_dds, lfcThreshold = 0, contrast = list("gbYes")) %>% data.frame %>% filter(padj <= 0.05)
-dss.ct = results(phyl_dds, lfcThreshold = 0, contrast = list("dssYes")) %>% data.frame %>% filter(padj <= 0.05)
-gbdss.ct = results(phyl_dds, lfcThreshold = 0, contrast = list("gbYes.dssYes")) %>% data.frame %>% filter(padj <= 0.05)
-
-# Species tables
-
-gb.ct.spec = results(spec_dds, lfcThreshold = 2, contrast = list("gbYes")) %>% data.frame %>% filter(padj <= 0.01)
-dss.ct.spec = results(spec_dds, lfcThreshold = 2, contrast = list("dssYes")) %>% data.frame %>% filter(padj <= 0.01)
-gbdss.ct.spec = results(spec_dds, lfcThreshold = 2, contrast = list("gbYes.dssYes")) %>% data.frame %>% filter(padj <= 0.01)
-
-# Downloading the phylum table results
-
-write.table(gb.ct, "./gb_vs_ct.deseq.tsv", sep = ";")
-write.table(dss.ct, "./dss_vs_ct.deseq.tsv", sep = ";")
-write.table(gbdss.ct, "./gbdss_vs_ct.deseq.tsv", sep = ";")
-
-# Downloading the species table results
-
-write.table(gb.ct.spec, "./gb_vs_ct.deseq.tsv", sep = ";")
-write.table(dss.ct.spec, "./dss_vs_ct.deseq.tsv", sep = ";")
-write.table(gbdss.ct.spec, "./gbdss_vs_ct.deseq.tsv", sep = ";")
 ```
 
 If you want to see the number of differentially abundant taxa between two treatments or their magnitude of change, you can do this:
