@@ -150,7 +150,7 @@ For taxonomic classifications, you need to have a classifier to which you blast 
 
 source activate qiime2
 TMPDIR=/scratch/$SLURM_JOB_ID 
-qiime feature-classifier fit-classifier-naive-bayes \   # here you can use train your classifier based on Naive-Bayes method
+qiime feature-classifier fit-classifier-naive-bayes \   # here you can train your classifier based on a Naive-Bayes method
 --i-reference-reads ~/derepseqs-uniq-341f-805r.qza \    # Dereplicated sequences based on the primer set as input
 --i-reference-taxonomy ~/dereptaxa-uniq-341f-805r.qza\  # Dereplicated taxonomic annotations based on the primer set as input
  --o-classifier ~/silva-classifier-primered4.qza        # The final classifier as the output
