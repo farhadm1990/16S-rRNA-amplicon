@@ -218,7 +218,7 @@ source activate qiime2.8
 qiime fragment-insertion sepp \                             # The package for generating the phylogenetic tree
 --i-representative-sequences ~/data/dss/repseqsNoFilt.qza \ # Our representative sequences (input)
 --i-reference-database ~/data/dss/sepp-ref-gg-13-8.qza \    # The SEPP sequence dataset (input)
---o-tree ~/data/dss/treeNoFilt.qza \                        # The unrooted tree (output)
+--o-tree ~/data/dss/treeNoFilt.qza \                        # The rooted tree (output)
 --o-placements ~/data/dss/tree-placementsNoFilt.qza \
 --p-threads 10                                              # Number of processor cores
 
