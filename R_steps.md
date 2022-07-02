@@ -177,7 +177,7 @@ Warning: this might influence your alpha diversity measures, i.e. might cause un
 #Filtering ASVs based on their prevalence threshold of 5 samples accross the samples. This means that each ASV should have appeared at least in 5 samples to be kept.
 
 asv.filter = function(asvtab, n.samples = 5){
-  filter.threshold <- n.samples/ncol(asvtab)
+  filter.threshold <- n.samples/ncol(asvtab) * 100
   table_count <- apply(otu_table(asvtab), 2, function(x) ifelse(x>0, 1, 0)) %>% as.data.frame()
   suspected_ASV = table_count[which((rowSums(table_count)/ncol(table_count))*100 < filter.threshold),] %>% rownames()
   
