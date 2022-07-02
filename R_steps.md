@@ -216,7 +216,7 @@ out.ASV = function (phyloseq, threshold =1, binwidth = 0.01) {
                       names.single = t(apply(rel_abund, 1, function(x){ifelse(x == threshold, TRUE, ifelse(x == sum(x),
                       TRUE, FALSE))})) %>% reshape2::melt() %>% filter(value == TRUE) %>% dplyr::select(1) %>%
                       pull   %>% as.vector
-                      single.ASV = rel_abund[rownames(rel_abund) %in% as.vector(names.single),]
+                      single.ASV = rel_abund[rownames(rel_abund) %in% names.single,]
                       single.ASV[single.ASV == 0] <- NA # A separate dataset for annotation of singletones on the barplot
                         
                         if (length(names.single) == 0 ) {
