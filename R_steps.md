@@ -207,15 +207,17 @@ First make a relative abundance from the ASV count table and see which ASVs occu
 ```R
 #A function to find singletones You need to be careful about this step!
 out.ASV = function (phyloseq, threshold =1, binwidth = 0.01) {
-       
+       pacman::p_load(glue, tidyverse, reshape2, ggrepel, S4Vectors)
 #This function requires phyloseq, tidyverse and glue packages to be loaded. 
     
                       rel_abund = t(apply(otu_table(phyloseq), ifelse(taxa_are_rows(phyloseq), 1,2), 
                       function(x) x/sum(x))) #making the relative abundance table
+                      
                       names.single = t(apply(rel_abund, 1, function(x){ifelse(x == threshold, TRUE, ifelse(x == sum(x),
-                      TRUE, FALSE))})) %>% melt %>% filter(value == TRUE) %>% select(1) %>% pull  %>% unfactor()
-                      single.ASV = rel_abund[rownames(rel_abund)%in%as.vector(names.single),]
-                      single.ASV[single.ASV == 0] <- NA # A seperate dataset for annotation of singletones on the barplot
+                      TRUE, FALSE))})) %>% reshape2::melt() %>% filter(value == TRUE) %>% dplyr::select(1) %>%
+                      pull   %>% unique
+                      single.ASV = rel_abund[rownames(rel_abund) %in% as.vector(names.single),]
+                      single.ASV[single.ASV == 0] <- NA # A separate dataset for annotation of singletones on the barplot
                         
                         if (length(names.single) == 0 ) {
                         print(glue("{length(names.single)} singletones detected in this dataset"))
@@ -226,18 +228,19 @@ out.ASV = function (phyloseq, threshold =1, binwidth = 0.01) {
                         
                          return(structure(list(qplot.noSing, names.single))   )
                             
-                        } else {
+                        } else { 
                                          
                        qplot.withSing = qplot(rel_abund, geom = "histogram", binwidth = binwidth, color = rel_abund, 
                        main = "Frequency count of relative abundance with singletones") +
                        geom_bar(aes(single.ASV),  color = "red", width = binwidth)+
                        xlab ("Relative abundance in samples") + ylab("Frequency") + 
                        geom_label_repel(aes(x = 0.95, y =length(rel_abund)/10), 
-                       label.padding =  unit(0.55, "lines"), label = glue("{length(names.single)}\n Singletones"), color = "black")
+                       label.padding =  unit(0.55, "lines"), 
+                       label = glue("{length(names.single)}\n Singletones"), color = "black") + theme_bw()
                             
                        qplot.rmSing = qplot(rel_abund[!rownames(rel_abund) %in% names.single, ], geom = "histogram",
                        binwidth = binwidth, main = "Frequency count of relative abundance without singletones") +
-                       xlab ("Relative abundance in samples") + ylab("Frequency")
+                       xlab ("Relative abundance in samples") + ylab("Frequency")+ theme_bw()
                             
                        print(glue('{length(names.single)} singletones detected in the dataset'))
                        return(structure(list(qplot.withSing, qplot.rmSing, unlist(names.single))) )
