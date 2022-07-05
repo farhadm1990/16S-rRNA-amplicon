@@ -556,7 +556,7 @@ glom.phyl <- gloomer(pst.qPCR, "Phylum", NArm = TRUE)
 
 #Merging counts for treatments
 trans.ps1 <- merge_samples(glom.phyl, "treatment") 
-
+sample_data(trans.ps1)$treatmen2 <- factor(rownames(sample_data(trans.ps1)), levels = c("CT", "GB", "DSS", "GBDSS"))
                                      
 #Barplot                                    
 plot_bar(trans.ps1, fill="Phylum", x = "treatment2") + scale_fill_manual(values = phylcol) + 
