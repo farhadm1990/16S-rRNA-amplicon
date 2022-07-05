@@ -925,9 +925,9 @@ Distance-based Redundancy Analysis (dbRDA) is a Redundancy Analysis on the eigen
 set.seed(1990)
 h <- with(data = data.frame(sample_data(pst.qPCR.log)), how(blocks = litter, nperm = 9999))
 
-db.rda.wunifrac = vegan::dbrda(wunifrac.dist.qpcr.log ~  gb * dss + Condition(litter), data = sample_data(pst.qPCR.log)%>%data.frame)    #Full model
-db.rda.wunifrac.gb = vegan::dbrda(wunifrac.dist.qpcr.log ~  gb + Condition(litter + dss), data = sample_data(pst.qPCR.log)%>%data.frame) #GB overall effect, dss effect as denominator to be removed from permutation
-db.rda.wunifrac.dss = vegan::dbrda(wunifrac.dist.qpcr.log ~ dss + Condition(litter + gb), data = sample_data(pst.qPCR.log)%>%data.frame) #DSS overall effect, dss effect as denominator to be removed from permutation
+db.rda.wunifrac = vegan::dbrda(wunifrac.dist.qpcr.log ~  gb * dss, Condition(litter), data = sample_data(pst.qPCR.log)%>%data.frame)    #Full model
+db.rda.wunifrac.gb = vegan::dbrda(wunifrac.dist.qpcr.log ~  gb, Condition(litter + dss), data = sample_data(pst.qPCR.log)%>%data.frame) #GB overall effect, dss effect as denominator to be removed from permutation
+db.rda.wunifrac.dss = vegan::dbrda(wunifrac.dist.qpcr.log ~ dss, Condition(litter + gb), data = sample_data(pst.qPCR.log)%>%data.frame) #DSS overall effect, dss effect as denominator to be removed from permutation
 db.rda.wunifrac #Treatments explained 39% of variance
 db.rda.wunifrac.gb #GB explained 5% of variance
  db.rda.wunifrac.dss #dbRDA does not do any permutation test #DSS explained 31% of variance
