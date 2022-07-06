@@ -1418,10 +1418,10 @@ The function is also able to perfomr these analysis with and without Centered-Lo
     
 
 ```R
-network_forger = function(data, treatment_prune = FALSE, treatment = "whatever", treat_level = "you.name.it", filtering_threshold = 30, 
-                          clr = TRUE, FDR_method = "BH", cor_method = c("spearman", "pearson", "kendall"), 
+
+network_forger = function(data, treatment_prune = FALSE, treatment = "treatment column name", treat_level = "you.name.it", filtering_threshold = 30, clr = TRUE, FDR_method = "BH", cor_method = c("spearman", "pearson", "kendall"), 
                           cor_threshold = 0.55, sig_threshold = 0.01,
-                         directed = "FALSE", graph_mode= c("directed", "undirected"), graph_type = c("adjacency", "dataframe"), 
+                          directed = "FALSE", graph_mode= c("directed", "undirected"), graph_type = c("adjacency", "dataframe"), 
                           taxa_level = "Genus", top_n_taxa = 500, color_pallet = c("qual", "div", "seq"),
                           edge_pos_color = "cyan", edge_neg_color = "red"){
 
@@ -1430,7 +1430,7 @@ network_forger = function(data, treatment_prune = FALSE, treatment = "whatever",
 if (!requireNamespace("BiocManager", quietly = TRUE)) {
     install.packages("BiocManager")
 }
-for (pkg in c("devtools", "dada2", "phyloseq", "ALDEx2", )) {
+for (pkg in c("devtools", "dada2", "phyloseq", "ALDEx2")) {
   if (!requireNamespace(pkg, quietly = TRUE)) {
     BiocManager::install(pkg)
   }
@@ -1457,33 +1457,41 @@ library(microbiome)
 #A function to create unique names for each ASV. It removes any NA in Order level then attempts to use the name of one level higher taxa for those 
 #who have similar names, e.g. uncultured_bacterium
 
+
+# A custumized function for tax_glom()
+#A function to create unique names for each ASV. It removes any NA in Order level then attempts to use the name of one level higher taxa for those 
+#who have similar names, e.g. uncultured_bacterium
+
 gloomer = function(ps = data, taxa_level = taxa_level, NArm = "TRUE"){
     rank.names = c('Kingdom','Phylum', 'Class', 'Order', 'Family', 'Genus', 'Species')
     
 
-#Sometimes in genus level, we might have multiple uncultured organisms, which if we want to make unique out of them for the species level it won't work since adding uncultured to uncultered is sill duplication. therefore if the taxa_level is set to species we first make a unique genus and then we go further to the speices
+#====================Sometimes in genus level, we might have multiple uncultured organisms, which if we want to make unique out of them for the species level it won't work====
+    #since adding uncultured to uncultered is sill duplication. therefore if the taxa_level is set to species we first make a unique genus and then we go further to the speices===#
 
 #Removing unculured Family
 ps = subset_taxa(ps, !Family %in% c("uncultured", "NA"))
     
 if(taxa_level == "Species") {
+ps = subset_taxa(ps, !Genus %in% NA)#we remove genus tagged NA
+phyloseq::tax_table(ps)[, taxa_level] <- ifelse(phyloseq::tax_table(ps)[, taxa_level] %in% NA, paste0("unknown"), paste(phyloseq::tax_table(ps)[, taxa_level]))#convert NA in species into unknown
     
-  physeq = tax_glom(physeq = ps, taxrank = taxa_level, NArm = NArm)
-    taxdat = tax_table(physeq)[, seq_along(rank.names[1:which(rank.names == taxa_level)])]
+   physeq = tax_glom(physeq = ps, taxrank = taxa_level, NArm = NArm)
+   taxdat = phyloseq::tax_table(physeq)[, seq_along(rank.names[1:which(rank.names == taxa_level)])]
     
    taxdat = taxdat[complete.cases(taxdat),] %>% as.data.frame
-    otudat = otu_table(physeq)
+   otudat = otu_table(physeq)
     
 #first take care of the uncultured genus
 taxdat[,6] = ifelse(taxdat[,6] == "uncultured", 
-       paste(taxdat[ , length(rank.names[1:which(rank.names=="Genus")])-1], "_", taxdat[,6]), paste(taxdat[,6]))
+       paste0(taxdat[ , length(rank.names[1:which(rank.names=="Genus")])-1], "_", taxdat[,6]), paste(taxdat[,6]))
 
 spec1 = taxdat[, taxa_level] %>% as.vector
 spec2  = taxdat[, taxa_level] %>% as.vector
 
     uni  = matrix(NA, ncol = length(spec2), nrow = length(spec1))
     for(i in seq_along(spec1)){
-        for(j in seq_along(spec2)){
+    for(j in seq_along(spec2)){
     uni[i, j] = ifelse(spec1[i] == spec2[j] , "TRUE", "FALSE")
     }
         }
@@ -1492,31 +1500,32 @@ rownames(uni) <-spec1
 colnames(uni) <- spec2   
 uni[upper.tri(uni, diag = TRUE)] = 0 #get rid of diagonals and upper triangle
 
-duplis = uni %>% melt %>% filter(value == "TRUE") 
+duplis = uni %>% melt() %>% filter(value == "TRUE") 
 
 if(dim(duplis)[[1]] > 0) {
-duplis = uni %>% eshape2::melt %>% filter(value == "TRUE") %>% dplyr::select(1) %>% unique() %>% unlist %>% as.vector
+duplis = uni %>% melt() %>% filter(value == "TRUE") %>% dplyr::select(1) %>% unique() %>% unlist() %>% as.vector()
 taxdat = taxdat %>% mutate( uni= ifelse(taxdat[, taxa_level] %in% duplis, 
-                    paste(taxdat[,length(rank.names[1:which(rank.names==taxa_level)])-1], "_", taxdat[,taxa_level]), taxdat[,taxa_level]))
+                    paste0(taxdat[,length(rank.names[1:which(rank.names==taxa_level)])-1], "_", taxdat[,taxa_level]), taxdat[,taxa_level]))
+
 taxdat[, taxa_level] = taxdat[, "uni"]
 taxdat[, "uni"] <- NULL
 taxdat <- as.matrix(taxdat)   
 rownames(otudat) <- taxdat[rownames(taxdat) %in% rownames(otudat), taxa_level]
 rownames(taxdat) <- taxdat[, taxa_level]
-taxdat <- tax_table(taxdat)
+taxdat <- phyloseq::tax_table(taxdat)
 taxa_names(physeq) <- taxa_names(taxdat)
-tax_table(physeq) <- taxdat
+phyloseq::tax_table(physeq) <- taxdat
 otu_table(physeq) <- otudat
     
 } else {
     
 taxdat <- as.matrix(taxdat) 
-taxdat <- tax_table(taxdat)
+taxdat <- phyloseq::tax_table(taxdat)
 rownames(otudat) <- taxdat[rownames(taxdat) %in% rownames(otudat), taxa_level]
 rownames(taxdat) <- taxdat[, taxa_level]
-taxdat <- tax_table(taxdat)
+taxdat <- phyloseq::tax_table(taxdat)
 taxa_names(physeq) <- taxa_names(taxdat)
-tax_table(physeq) <- taxdat
+phyloseq::tax_table(physeq) <- taxdat
 otu_table(physeq) <- otudat
     
 }
@@ -1528,7 +1537,7 @@ otu_table(physeq) <- otudat
 } else if (taxa_level == "Genus") {
     
     physeq = tax_glom(physeq = ps, taxrank = taxa_level, NArm = NArm)
-    taxdat = tax_table(physeq)[, seq_along(rank.names[1:which(rank.names == taxa_level)])]
+    taxdat = phyloseq::tax_table(physeq)[, seq_along(rank.names[1:which(rank.names == taxa_level)])]
     
    taxdat = taxdat[complete.cases(taxdat),] %>% as.data.frame
     otudat = otu_table(physeq)
@@ -1541,11 +1550,11 @@ taxdat[,6] = ifelse(taxdat[,6] == "uncultured",
 rownames(otudat) <- taxdat[rownames(taxdat) %in% rownames(otudat), taxa_level]
 rownames(taxdat) <- taxdat[taxdat[,taxa_level] %in% rownames(otudat), taxa_level]
 taxdat <- as.matrix(taxdat) 
-taxdat <- tax_table(taxdat)
+taxdat <- phyloseq::tax_table(taxdat)
 taxa_names(physeq) <- taxa_names(taxdat)
-tax_table(physeq) <- taxdat
+phyloseq::tax_table(physeq) <- taxdat
 otu_table(physeq) <- otudat
-#ps = phyloseq(otu_table(otudat, taxa_are_rows = T), tax_table(as.matrix(taxdat)), sample_data(physeq))
+#ps = phyloseq(otu_table(otudat, taxa_are_rows = T), phyloseq::tax_table(as.matrix(taxdat)), sample_data(physeq))
  
     
     
@@ -1553,7 +1562,7 @@ otu_table(physeq) <- otudat
     
     
 physeq = tax_glom(physeq = ps, taxrank = taxa_level, NArm = TRUE)
-    taxdat = tax_table(physeq)[, seq_along(rank.names[1:which(rank.names == taxa_level)])]
+    taxdat = phyloseq::tax_table(physeq)[, seq_along(rank.names[1:which(rank.names == taxa_level)])]
     
 taxdat = taxdat[complete.cases(taxdat),] %>% as.data.frame
 otudat = otu_table(physeq)
@@ -1572,11 +1581,11 @@ rownames(uni) <-spec1
 colnames(uni) <- spec2   
 uni[upper.tri(uni, diag = TRUE)] = 0 #get rid of diagonals and upper triangle
 
-duplis = uni %>% melt %>% filter(value == "TRUE")
+duplis = uni %>% reshape2::melt() %>% filter(value == "TRUE")
 
 if(dim(duplis)[[1]] > 0){#if there is not duplications, we can simply use the taxa names as the row name
     
-    duplis = uni %>% melt %>% filter(value == "TRUE") %>% dplyr::select(1)%>% unique() %>% unlist %>% as.vector
+    duplis = uni %>% reshape2::melt() %>% filter(value == "TRUE") %>% dplyr::select(1)%>% unique() %>% unlist %>% as.vector
 taxdat = taxdat %>% mutate( uni= ifelse(taxdat[, taxa_level] %in% duplis, 
                     paste(taxdat[,length(rank.names[1:which(rank.names==taxa_level)])-1], "_", taxdat[,taxa_level]), taxdat[,taxa_level]))
     
@@ -1585,19 +1594,19 @@ taxdat[, "uni"] <- NULL
 taxdat <- as.matrix(taxdat)   
 rownames(otudat) <- taxdat[rownames(taxdat) %in% rownames(otudat), taxa_level]
 rownames(taxdat) <- taxdat[, taxa_level]
-taxdat <- tax_table(taxdat)
+taxdat <- phyloseq::tax_table(taxdat)
 taxa_names(physeq) <- taxa_names(taxdat)
-tax_table(physeq) <- taxdat
+phyloseq::tax_table(physeq) <- taxdat
 otu_table(physeq) <- otudat
 } else {
 
 taxdat <- as.matrix(taxdat) 
-taxdat <- tax_table(taxdat)
+taxdat <- phyloseq::tax_table(taxdat)
 rownames(otudat) <- taxdat[rownames(taxdat) %in% rownames(otudat), taxa_level]
 rownames(taxdat) <- taxdat[, taxa_level]
-taxdat <- tax_table(taxdat)
+taxdat <- phyloseq::tax_table(taxdat)
 taxa_names(physeq) <- taxa_names(taxdat)
-tax_table(physeq) <- taxdat
+phyloseq::tax_table(physeq) <- taxdat
 otu_table(physeq) <- otudat
 }
 #ps = phyloseq(otu_table(otudat, taxa_are_rows = T), tax_table(as.matrix(taxdat)), sample_data(physeq))
@@ -1823,11 +1832,11 @@ col_vector = unlist(mapply(brewer.pal, pals$maxcolors, rownames(pals))) %>% uniq
 
 if(taxa_level == "Species"){
     
-    taxa.table = taxdat[complete.cases(taxdat), seq(which(taxa.names %in% taxa_level))]
+    taxa.table = phyloseq::tax_table(physeq)[complete.cases(phyloseq::tax_table(physeq)),seq(which(taxa.names %in%taxa_level))]
     
 
 } else { 
-    taxa.table = tax_table(physeq)[complete.cases(tax_table(physeq)),seq(which(taxa.names %in%taxa_level))]
+    taxa.table = phyloseq::tax_table(physeq)[complete.cases(phyloseq::tax_table(physeq)),seq(which(taxa.names %in%taxa_level))]
     taxa.table = taxa.table[!rownames(taxa.table)%in%"Unknown",]
 }
     
@@ -2079,10 +2088,10 @@ pals = brewer.pal.info[brewer.pal.info$category %in% color_pallet,]
 col_vector = unlist(mapply(brewer.pal, pals$maxcolors, rownames(pals))) %>% unique
 
 if(taxa_level == "Species"){
-    taxa.table = taxdat[complete.cases(taxdat), seq(which(taxa.names %in% taxa_level))]
+    taxa.table = phyloseq::tax_table(physeq)[complete.cases(phyloseq::tax_table(physeq)),seq(which(taxa.names %in%taxa_level))]
     
 } else { 
-    taxa.table = tax_table(physeq)[complete.cases(tax_table(physeq)),seq(which(taxa.names %in%taxa_level))]
+    taxa.table = phyloseq::tax_table(physeq)[complete.cases(phyloseq::tax_table(physeq)),seq(which(taxa.names %in%taxa_level))]
     taxa.table = taxa.table[!rownames(taxa.table)%in%"Unknown",]
 }
     
@@ -2202,7 +2211,7 @@ print(glue::glue("Your graph is ready! Graph is based on {cor_method} correlatio
   
 }
   
-        #extracting the goodies from the calculations
+#extracting the goodies from the calculations
 if(graph_type == "adjacency") {
        
 structure(list(asv.filt = asv.filt, cor.pval = cor.pval, cor = cor, q.values = q.vals.matrix,
@@ -2222,6 +2231,7 @@ structure(list(asv.filt = asv.filt, cor.pval = cor.pval, cor = cor, q.values = q
    
 
 }
+
 
 ```
 
