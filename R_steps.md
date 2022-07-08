@@ -1419,6 +1419,7 @@ The function is also able to perfomr these analysis with and without Centered-Lo
 
 ```R
 
+```{r}
 network_forger = function(data, treatment_prune = FALSE, treatment = "treatment column name", treat_level = "you.name.it", filtering_threshold = 30, clr = TRUE, FDR_method = "BH", cor_method = c("spearman", "pearson", "kendall"), 
                           cor_threshold = 0.55, sig_threshold = 0.01,
                           directed = "FALSE", graph_mode= c("directed", "undirected"), graph_type = c("adjacency", "dataframe"), 
@@ -1734,7 +1735,7 @@ o <- order(sds, decreasing = TRUE)[1:top_n_taxa]#ordering the rows based on thei
     
     
 graph.adjace = graph_from_adjacency_matrix(q.vals.matrix[o, o], mode = graph_mode)#graph of qval data. however this is not what we must do 
-graph.adjace = delete.vertices(graph.adjace, degree(graph.adjace)==0)#to deleted zero vertices
+graph.adjace = delete.vertices(graph.adjace, igraph::degree(graph.adjace)==0)#to deleted zero vertices
 graph.adjace = delete_edges(graph = graph.adjace, edges = E(graph.adjace)[which_multiple(graph.adjace)])    
 
 print("Done! Graph is based on adjacency q.value matrix from the CLR data")    
@@ -1802,11 +1803,10 @@ graph.df = graph_from_data_frame(edge, directed = FALSE)
 #removing the multiple edges from the graph, i.e. those who go twice
 graph.df = delete_edges(graph = graph.df, edges = E(graph.df)[which_multiple(graph.df)])
 
-
 #Vertice attributes
-V(graph.df)$degree =degree(graph.df, mode = "all")
+V(graph.df)$degree =igraph::degree(graph.df, mode = "all")
 V(graph.df)$label = V(graph.df)$name#create label for the network
-V(graph.df)$eigen <- evcent(graph.df)$vector
+V(graph.df)$eigen <- igraph::evcent(graph.df)$vector
 V(graph.df)$betweeness <- betweenness(graph.df, directed=FALSE)
 V(graph.df)$rel.abund <- asv.relabund$rel.abund[rownames(asv.relabund) %in% names(V(graph.df))]
 #V(graph.df)$treat <- levels(node_met$treatment)
@@ -1947,7 +1947,7 @@ print('Warning! the taxa name has not been entered correctly :( \n it must be on
     #we make the labels exactly similar to the taxa_level
 v.labs = factor(vertex_attr(graph.df, taxa_level), levels =  vertex_attr(graph.df, taxa_level))
 
-graph.df = set.vertex.attribute(graph.df, "label", value=paste(v.labs %>% levels)) 
+graph.df = igraph::set.vertex.attribute(graph.df, "label", value=paste(v.labs %>% levels)) 
 
 print(glue::glue("Your graph is ready! Graph is based on {cor_method} correlation matrix\n for CLR-transformed data, chosen based on BH q.value < 0.01")     )
 
@@ -1999,7 +1999,7 @@ sds <- rowSds(q.vals.matrix, na.rm = TRUE)
 o <- order(sds, decreasing = TRUE)[1:top_n_taxa]
     
 graph.adjace = graph_from_adjacency_matrix(q.vals.matrix[o, o], mode = graph_mode)#graph of qval data. however this is not what we must do 
-graph.adjace = delete.vertices(graph.adjace, degree(graph.adjace)==0)#to deleted zero vertices
+graph.adjace = delete.vertices(graph.adjace, igraph::degree(graph.adjace)==0)#to deleted zero vertices
 graph.adjace = delete_edges(graph = graph.adjace, edges = E(graph.adjace)[which_multiple(graph.adjace)])   
 
 
@@ -2061,10 +2061,10 @@ graph.df = graph_from_data_frame(edge, directed = FALSE)
 graph.df = delete_edges(graph = graph.df, edges = E(graph.df)[which_multiple(graph.df)])
 
 #Vertice attributes
-V(graph.df)$degree =degree(graph.df, mode = "all")
+V(graph.df)$degree =igraph::degree(graph.df, mode = "all")
 V(graph.df)$label = V(graph.df)$name#create label for the network
 V(graph.df)$eigen <- evcent(graph.df)$vector
-V(graph.df)$betweeness <- betweenness(graph.df, directed=FALSE)
+V(graph.df)$betweeness <- igraph::betweenness(graph.df, directed=FALSE)
 V(graph.df)$rel.abund <- asv.relabund$rel.abund[rownames(asv.relabund) %in% names(V(graph.df))]
 #V(graph.df)$treat <- levels(node_met$treatment)
 #V(graph.df)$sampleID <- rownames(node_met)
@@ -2112,8 +2112,8 @@ if(taxa_level == "Kingdom"){
 for(n in taxa.names[1:ncol(taxa.table)]){
             for(m in color.index[1:ncol(taxa.table)]){
                 
-            vertex_attr(graph.df, n)= colindex[rownames(colindex) %in% names(V(graph.df)),n] %>% as.vector
-            vertex_attr(graph.df, m)= colindex[rownames(colindex) %in% names(V(graph.df)),m] %>% as.vector
+            igraph::vertex_attr(graph.df, n)= colindex[rownames(colindex) %in% names(V(graph.df)),n] %>% as.vector
+            igraph::vertex_attr(graph.df, m)= colindex[rownames(colindex) %in% names(V(graph.df)),m] %>% as.vector
             
  
 }
@@ -2124,8 +2124,8 @@ for(n in taxa.names[1:ncol(taxa.table)]){
 for(n in taxa.names[1:ncol(taxa.table)]){
             for(m in color.index[1:ncol(taxa.table)]){
                 
-            vertex_attr(graph.df, n)= colindex[rownames(colindex) %in% names(V(graph.df)),n] %>% as.vector
-            vertex_attr(graph.df, m)= colindex[rownames(colindex) %in% names(V(graph.df)),m] %>% as.vector
+            igraph::vertex_attr(graph.df, n)= colindex[rownames(colindex) %in% names(V(graph.df)),n] %>% as.vector
+            igraph::vertex_attr(graph.df, m)= colindex[rownames(colindex) %in% names(V(graph.df)),m] %>% as.vector
             
  
 }
@@ -2136,8 +2136,8 @@ for(n in taxa.names[1:ncol(taxa.table)]){
  for(n in taxa.names[1:ncol(taxa.table)]){
             for(m in color.index[1:ncol(taxa.table)]){
                 
-            vertex_attr(graph.df, n)= colindex[rownames(colindex) %in% names(V(graph.df)),n] %>% as.vector
-            vertex_attr(graph.df, m)= colindex[rownames(colindex) %in% names(V(graph.df)),m] %>% as.vector
+            igraph::vertex_attr(graph.df, n)= colindex[rownames(colindex) %in% names(V(graph.df)),n] %>% as.vector
+           igraph::vertex_attr(graph.df, m)= colindex[rownames(colindex) %in% names(V(graph.df)),m] %>% as.vector
             
  
 }
@@ -2148,8 +2148,8 @@ for(n in taxa.names[1:ncol(taxa.table)]){
     for(n in taxa.names[1:ncol(taxa.table)]){
             for(m in color.index[1:ncol(taxa.table)]){
                 
-            vertex_attr(graph.df, n)= colindex[rownames(colindex) %in% names(V(graph.df)),n] %>% as.vector
-            vertex_attr(graph.df, m)= colindex[rownames(colindex) %in% names(V(graph.df)),m] %>% as.vector
+            igraph::vertex_attr(graph.df, n)= colindex[rownames(colindex) %in% names(V(graph.df)),n] %>% as.vector
+            igraph::vertex_attr(graph.df, m)= colindex[rownames(colindex) %in% names(V(graph.df)),m] %>% as.vector
             
  
 }
@@ -2160,8 +2160,8 @@ for(n in taxa.names[1:ncol(taxa.table)]){
     for(n in taxa.names[1:ncol(taxa.table)]){
             for(m in color.index[1:ncol(taxa.table)]){
                 
-            vertex_attr(graph.df, n)= colindex[rownames(colindex) %in% names(V(graph.df)),n] %>% as.vector
-            vertex_attr(graph.df, m)= colindex[rownames(colindex) %in% names(V(graph.df)),m] %>% as.vector
+            igraph::vertex_attr(graph.df, n)= colindex[rownames(colindex) %in% names(V(graph.df)),n] %>% as.vector
+            igraph::vertex_attr(graph.df, m)= colindex[rownames(colindex) %in% names(V(graph.df)),m] %>% as.vector
             
  
 }
@@ -2172,8 +2172,8 @@ for(n in taxa.names[1:ncol(taxa.table)]){
 for(n in taxa.names[1:ncol(taxa.table)]){
             for(m in color.index[1:ncol(taxa.table)]){
                 
-            vertex_attr(graph.df, n)= colindex[rownames(colindex) %in% names(V(graph.df)),n] %>% as.vector
-            vertex_attr(graph.df, m)= colindex[rownames(colindex) %in% names(V(graph.df)),m] %>% as.vector
+            igraph::vertex_attr(graph.df, n)= colindex[rownames(colindex) %in% names(V(graph.df)),n] %>% as.vector
+            igraph::vertex_attr(graph.df, m)= colindex[rownames(colindex) %in% names(V(graph.df)),m] %>% as.vector
             
  
 }
@@ -2185,8 +2185,8 @@ for(n in taxa.names[1:ncol(taxa.table)]){
     for(n in taxa.names[1:ncol(taxa.table)]){
             for(m in color.index[1:ncol(taxa.table)]){
                 
-            vertex_attr(graph.df, n)= colindex[rownames(colindex) %in% names(V(graph.df)),n] %>% as.vector
-            vertex_attr(graph.df, m)= colindex[rownames(colindex) %in% names(V(graph.df)),m] %>% as.vector
+            igraph::vertex_attr(graph.df, n)= colindex[rownames(colindex) %in% names(V(graph.df)),n] %>% as.vector
+            igraph::vertex_attr(graph.df, m)= colindex[rownames(colindex) %in% names(V(graph.df)),m] %>% as.vector
             
  
 }
@@ -2200,9 +2200,9 @@ print('Warning! the taxa name has not been entered correctly :( \n it must be on
 
 #since the labels of the vertices are automatically oredered alphabetically and this would make problem with assigning right color to them, 
 #we make the labels exactly similar to the taxa_level
-v.labs = factor(vertex_attr(graph.df, taxa_level), levels =  vertex_attr(graph.df, taxa_level))
+v.labs = factor(igraph::vertex_attr(graph.df, taxa_level), levels =  igraph::vertex_attr(graph.df, taxa_level))
 
-graph.df = set.vertex.attribute(graph.df, "label", value=paste(v.labs %>% levels))
+graph.df = igraph::set.vertex.attribute(graph.df, "label", value=paste(v.labs %>% levels))
 
     
 print(glue::glue("Your graph is ready! Graph is based on {cor_method} correlation matrix\n for non-CLR-transformed data, chosen based on BH q.value < 0.01"))
@@ -2231,6 +2231,8 @@ structure(list(asv.filt = asv.filt, cor.pval = cor.pval, cor = cor, q.values = q
    
 
 }
+
+```
 
 
 ```
