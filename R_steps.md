@@ -1162,48 +1162,97 @@ You can now see the results anames by typing `resultsNames(phyl_dds)`, and based
 ```R
 #Phylum
 
-#interaction
+
+#Main effects
 gb.dss = results(phyl_dds, contrast = c(0,0,0,0,0,1),lfcThreshold = 0) %>% data.frame %>% filter(padj < 0.05)
 inter.sig = rownames(gb.dss)#taxa that with significant interaction
 
 #making a new phyl.dds with only taxa which changed by interaction effect
+
+phyl.dds.main = phyl_dds[!rownames(phyl_dds) %in% inter.sig]
+
+#main effect of gb
+gb.main = results(phyl.dds.main, contrast = c(0,1,0,0,0,0.5),lfcThreshold = 0) %>% data.frame %>% filter(padj < 0.05)#taxa significant across groups without interaction
+#main effect of dss
+dss.main = results(phyl.dds.main, contrast = c(0,0,1,0,0,0.5),lfcThreshold = 0) %>% data.frame %>% filter(padj < 0.05)
+```
+Now we can do pairwise comparisons with the treatment full factors.
+
+```R
+#Pairwise comparison phylum
+# full treatment model for pairwise comparisons
+phyl_dds<-phyloseq_to_deseq2(phyl.qpcr, design  =  ~   treatment + blok ) 
+              
+gm.mean = function(x, na.rm= TRUE) {
+    exp(sum(log(x[x>0]), na.rm=na.rm)/length(x))
+}
+geo.mean = apply(counts(phyl_dds), 1, gm.mean)
+phyl_dds = estimateSizeFactors(phyl_dds, geoMeans = geo.mean)
+
+phyl_dds<-DESeq(phyl_dds, test = "Wald", fitType = "local")
+
+resultsNames(phyl_dds)
+
+#making a new phyl.dds with only taxa which changed by interaction effect
 phyl.dds.inter = phyl_dds[rownames(phyl_dds) %in% inter.sig]
 
-#Pairwise comparison
-gb.vs.dss = results(phyl.dds.inter, contrast = c(0,1,1,0,0,0),lfcThreshold = 0) %>% data.frame %>% filter(padj < 0.05)
-gb.vs.gbdss = results(phyl.dds.inter, contrast = c(0,1,0,0,0,1),lfcThreshold = 0) %>% data.frame %>% filter(padj < 0.05)
-dss.vs.gbdss = results(phyl.dds.inter, contrast = c(0,0,1,0,0,1),lfcThreshold = 0) %>% data.frame %>% filter(padj < 0.05)
-gb.vs.ct = results(phyl.dds.inter, contrast = c(1,1,0,0,0,0),lfcThreshold = 0) %>% data.frame %>% filter(padj < 0.05)
-dss.vs.ct = results(phyl.dds.inter, contrast = c(1,0,1,0,0,0),lfcThreshold = 0) %>% data.frame %>% filter(padj < 0.05)
-gbdss.vs.ct = results(phyl.dds.inter, contrast = c(1,0,0,0,0,1),lfcThreshold = 0) %>% data.frame %>% filter(padj < 0.05)
-#main effect of gb
-gb.main = results(phyl_dds, contrast = c(0,1,0,0,0,0.5),lfcThreshold = 0) %>% data.frame %>% filter(padj < 0.05)
-gb.main = gb.main[!rownames(gb.main) %in% inter.sig, ]#taxa significant for across groups without interaction
-#main effect of dss
-dss.main = results(phyl_dds, contrast = c(0,0,1,0,0,0.5),lfcThreshold = 0) %>% data.frame %>% filter(padj < 0.05)
-dss.main = dss.main[!rownames(dss.main) %in% inter.sig, ]
+dss.vs.gb = results(phyl.dds.inter, contrast = c("treatment", "DSS", "GB") ,lfcThreshold = 0) %>% data.frame %>% filter(padj < 0.05)
+gbdss.vs.gb = results(phyl.dds.inter, contrast = c("treatment", "GBDSS", "GB"), lfcThreshold = 0) %>% data.frame %>% filter(padj < 0.05)
+gbdss.vs.dss = results(phyl.dds.inter, contrast = c("treatment", "GBDSS", "DSS"), lfcThreshold = 0) %>% data.frame %>% filter(padj < 0.05)
+gb.vs.ct = results(phyl.dds.inter, contrast = c("treatment", "GB", "CT"), lfcThreshold = 0) %>% data.frame %>% filter(padj < 0.05)
+dss.vs.ct = results(phyl.dds.inter, contrast = c("treatment", "DSS", "CT"), lfcThreshold = 0) %>% data.frame %>% filter(padj < 0.05)
+gbdss.vs.ct = results(phyl.dds.inter, contrast = c("treatment", "GBDSS", "CT"), lfcThreshold = 0) %>% data.frame %>% filter(padj < 0.05)
+```
 
+Species main effect
+```R
 #Species
 #interaction
 gb.dss.spec = results(spec_dds, contrast = c(0,0,0,0,0,1),lfcThreshold = 2) %>% data.frame %>% filter(padj < 0.01)
 inter.sig.spec = rownames(gb.dss.spec)#taxa that with significant interaction
 
 #making a new phyl.dds with only taxa which changed by interaction effect
-spec.dds.inter = spec_dds[rownames(spec_dds) %in% inter.sig.spec]
+spec.dds.main = spec_dds[!rownames(spec_dds) %in% inter.sig.spec]
 
-#Pairwise comparison
-gb.vs.dss.spec = results(spec.dds.inter, contrast = c(0,1,1,0,0,0),lfcThreshold = 2) %>% data.frame %>% filter(padj < 0.01)
-gb.vs.gbdss.spec = results(spec.dds.inter, contrast = c(0,1,0,0,0,1),lfcThreshold = 2) %>% data.frame %>% filter(padj < 0.01)
-dss.vs.gbdss.spec = results(spec.dds.inter, contrast = c(0,0,1,0,0,1),lfcThreshold = 2) %>% data.frame %>% filter(padj < 0.01)
 
 #main effect of gb
-gb.main.spec = results(spec_dds, contrast = c(0,1,0,0,0,0.5),lfcThreshold = 2) %>% data.frame %>% filter(padj < 0.01)
-gb.main.spec = gb.main.spec[!rownames(gb.main.spec) %in% inter.sig.spec, ]#taxa significant for across groups without interaction
+gb.main.spec = results(spec.dds.main, contrast = c(0,1,0,0,0,0.5),lfcThreshold = 2) %>% data.frame %>% filter(padj < 0.01)#taxa significant for across groups without interaction
 #main effect of dss
-dss.main.spec = results(spec_dds, contrast = c(0,0,1,0,0,0.5),lfcThreshold = 2) %>% data.frame %>% filter(padj < 0.01)
-dss.main.spec = dss.main.spec[!rownames(dss.main.spec) %in% inter.sig.spec, ]
+dss.main.spec = results(spec.dds.main, contrast = c(0,0,1,0,0,0.5),lfcThreshold = 2) %>% data.frame %>% filter(padj < 0.01)
+
 ```
 
+Species pairwise comparisons with the full factors of treatment.
+```R
+#pairwise comparison model for interaction sig taxa
+#converting species phylosq to deseq
+spec_dds<-phyloseq_to_deseq2(spec.qpcr, design  =  ~ treatment + blok) 
+              
+#Species
+#calculate geometric means prior to estimate size factors
+gm.mean = function(x, na.rm= TRUE) {
+    exp(sum(log(x[x>0]), na.rm=na.rm)/length(x))
+}
+geo.mean = apply(counts(spec_dds), 1, gm.mean)
+spec_dds = estimateSizeFactors(spec_dds, geoMeans = geo.mean)
+
+spec_dds<-DESeq(spec_dds, test = "Wald", fitType = "local")
+
+
+
+
+
+#Pairwise comparison
+
+spec.dds.inter = spec_dds[rownames(spec_dds) %in% inter.sig.spec]
+
+dss.vs.gb.spec = results(spec.dds.inter, contrast = c("treatment", "DSS", "GB"), lfcThreshold = 2) %>% data.frame %>% filter(padj < 0.01)
+gbdss.vs.gb.spec = results(spec.dds.inter, contrast = c("treatment", "GBDSS", "GB"), lfcThreshold = 2) %>% data.frame %>% filter(padj < 0.01)
+gbdss.vs.dss.spec = results(spec.dds.inter, contrast = c("treatment", "GBDSS", "DSS"), lfcThreshold = 2) %>% data.frame %>% filter(padj < 0.01)
+gb.vs.ct.spec = results(spec.dds.inter, contrast = c("treatment", "GB", "CT"), lfcThreshold = 2) %>% data.frame %>% filter(padj < 0.01)
+dss.vs.ct.spec = results(spec.dds.inter, contrast = c("treatment", "DSS", "CT"), lfcThreshold = 2) %>% data.frame %>% filter(padj < 0.01)
+gbdss.vs.ct.spec = results(spec.dds.inter, contrast = c("treatment", "GBDSS", "CT"), lfcThreshold = 2) %>% data.frame %>% filter(padj < 0.01)
+```
 
 It is always good to test if there are outliers in your result table.
 
@@ -1228,9 +1277,9 @@ If you want to see the number of differentially abundant taxa between two treatm
 
 ```R
  #comparison between treatments in species levels
-dss.n <- dss.ct.spec %>% filter(abs(log2FoldChange) > 2, padj <=0.01 ) %>% rownames()
-gb.n <- gb.ct.spec %>% filter(abs(log2FoldChange) > 2, padj <=0.01 ) %>% rownames()
-gbdss.n <- gbdss.ct.spec %>% filter(abs(log2FoldChange) > 2, padj <=0.01 ) %>% rownames()
+dss.n <- dss.vs.ct.spec %>% filter(abs(log2FoldChange) > 2, padj <=0.01 ) %>% rownames()
+gb.n <- gb.vs.ct.spec %>% filter(abs(log2FoldChange) > 2, padj <=0.01 ) %>% rownames()
+gbdss.n <- gbdss.vs.ct.spec %>% filter(abs(log2FoldChange) > 2, padj <=0.01 ) %>% rownames()
 
 # DSS vs GB comparison
 compare.dss.gb <- matrix(NA, nrow = length(dss.n), ncol = length(gb.n), dimnames = list(dss.n, gb.n))
