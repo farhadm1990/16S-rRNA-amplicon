@@ -2351,9 +2351,9 @@ library(car)
 library(emmeans)
 library(multcomp)
 
-iso.lm = glmer(Iso.acids  ~ gb * dss + blok + (1|litter) + (1|pig_no), 
+iso.lm = glmer(Iso.acids  ~ gb * dss + blok + (1|litter), 
            data = data.frame(prox.chem), family = Gamma(link = "log")) 
-iso.red = glmer(Iso.acids   ~ gb * dss   + (1|litter) + (1|pig_no), 
+iso.red = glmer(Iso.acids   ~ gb * dss   + (1|litter), 
            data = data.frame(prox.chem), family = Gamma(link = "log"))
 
 anova(iso.lm, iso.red)
