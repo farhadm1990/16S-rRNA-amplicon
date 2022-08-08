@@ -23,7 +23,7 @@ This module includes the following steps
 
 # [Steps in **R**](https://github.com/farhadm1990/Microbiome_analysis/blob/main/R_steps.md)
 
-### [1. Importing unrooted tree, ASV table and repseqs with the metadata to R using qiime2R package into R](https://github.com/farhadm1990/Microbiome_analysis/blob/main/R_steps.md#1-importing-unrooted-tree-asv-table-and-repseqs-with-the-metadata-to-r-using-qiime2r-package-into-r) 
+### [1. Importing unrooted tree, ASV table and repseqs with the metadata to R using qiime2R package into R](https://github.com/farhadm1990/Microbiome_analysis/blob/main/R_steps.md#1-importing-unrooted-tree-asv-table-and-repseqs-with-the-metadata-to-r-using-qiime2r-package-into-r)
 #
 ### [2. Preprocessing and cleaning up the sequences](https://github.com/farhadm1990/Microbiome_analysis/blob/main/R_steps.md#2-preprocessing-and-cleaning-up-the-dataset)
 #
