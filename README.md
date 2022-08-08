@@ -16,9 +16,9 @@ This module includes the following steps
 #
 ### [2. Filtering, dereplication, sample inference, chimera identification, and merging of paired-end reads by DADA2 package in qiime2](https://github.com/farhadm1990/Microbiome_analysis/blob/main/Qiime_Steps.md#2-filtering-dereplication-sample-inference-chimera-identification-and-merging-of-paired-end-reads-by-dada2-package-in-qiime2)
 #
-### [3. Training a primer-based region-specific classifier for taxonomic classification by Naïve-Bayes method (in Qiime2)](https://github.com/farhadm1990/Microbiome_analysis/blob/main/Qiime_Steps.md#3-training-a-primer-region-specific-classifier-for-taxonomic-classification-by-na%C3%AFve-bayes-method-in-qiime2)
+### [3. Training a primer-based region-specific classifier for taxonomic classification by Naïve-Bayes method (in Qiime2)](https://github.com/farhadm1990/Microbiome_analysis/blob/main/Qiime_Steps.md#3-training-a-primer-based-region-specific-classifier-for-taxonomic-classification-by-na%C3%AFve-bayes-method-in-qiime2)
 #
-### [4. Creating a phylogenetic tree using SATE-enabled phyhlogenetic placement (SEPP) method](https://github.com/farhadm1990/Microbiome_analysis/blob/main/Qiime_Steps.md#4-creating-a-phylogenetic-tree-using-sate-enabled-phyhlogenetic-placement-sepp-method)
+### [4. Creating a phylogenetic tree using SATE-enabled phyhlogenetic placement (SEPP) method](https://github.com/farhadm1990/Microbiome_analysis/blob/main/Qiime_Steps.md#4-creating-a-phylogenetic-tree-using-sate-enabled-phyhlogenetic-placement-sepp-method-for-diversity-analysis)
 #
 
 # [Steps in **R**](https://github.com/farhadm1990/Microbiome_analysis/blob/main/R_steps.md)
