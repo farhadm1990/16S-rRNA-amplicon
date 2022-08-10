@@ -1482,8 +1482,8 @@ The function is also able to perfomr these analysis with and without Centered-Lo
 
 ```R
 
-```{r}
-network_forger = function(data, treatment_prune = FALSE, treatment = "treatment column name", treat_level = "you.name.it", filtering_threshold = 30, clr = TRUE, FDR_method = "BH", cor_method = c("spearman", "pearson", "kendall"), 
+network_forger = function(data, treatment_prune = FALSE, treatment = "treatment column name", treat_level = "you.name.it", 
+                          filtering_threshold = 30, clr = TRUE, FDR_method = "BH", cor_method = c("spearman", "pearson", "kendall"), 
                           cor_threshold = 0.55, sig_threshold = 0.01,
                           directed = "FALSE", graph_mode= c("directed", "undirected"), graph_type = c("adjacency", "dataframe"), 
                           taxa_level = "Genus", top_n_taxa = 500, color_pallet = c("qual", "div", "seq"),
@@ -2012,7 +2012,7 @@ v.labs = factor(vertex_attr(graph.df, taxa_level), levels =  vertex_attr(graph.d
 
 graph.df = igraph::set.vertex.attribute(graph.df, "label", value=paste(v.labs %>% levels)) 
 
-print(glue::glue("Your graph is ready! Graph is based on {cor_method} correlation matrix\n for CLR-transformed data, chosen based on BH q.value < 0.01")     )
+print(glue::glue("Your graph is ready! Graph is based on {cor_method} correlation matrix\n for CLR-transformed data, chosen based on BH q.value <= {sig_threshold}")     )
 
 }
 
@@ -2268,7 +2268,7 @@ v.labs = factor(igraph::vertex_attr(graph.df, taxa_level), levels =  igraph::ver
 graph.df = igraph::set.vertex.attribute(graph.df, "label", value=paste(v.labs %>% levels))
 
     
-print(glue::glue("Your graph is ready! Graph is based on {cor_method} correlation matrix\n for non-CLR-transformed data, chosen based on BH q.value < 0.01"))
+print(glue::glue("Your graph is ready! Graph is based on {cor_method} correlation matrix\n for non-CLR-transformed data, chosen based on BH q.value <= {sig_threshold}"))
 
 
   
@@ -2294,6 +2294,7 @@ structure(list(asv.filt = asv.filt, cor.pval = cor.pval, cor = cor, q.values = q
    
 
 }
+
 
 ```
 
