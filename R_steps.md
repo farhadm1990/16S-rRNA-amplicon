@@ -1,6 +1,6 @@
-After we created all artifacts in qiime2 such as ASV table, repseqs, unrooted tree, taxonomy table and metadata, now we can bring them into R by usign qiime2_R package in R. 
+After we created all artifacts in qiime2 such as ASV table, repseqs, rooted tree, taxonomy table and metadata, now we can bring them into R by usign qiime2_R package in R. 
 ## 
-## 1. Importing unrooted tree, ASV table and repseqs with the metadata to R using qiime2R package into R. 
+## 1. Importing rooted tree, ASV table and repseqs with the metadata to R using qiime2R package into R. 
 Using qiime2R package, we can bring all generated artifacts from qiime2 into R and integrate them into one phyloseq object by qiime_to_phyloseq()
 
 ```R
