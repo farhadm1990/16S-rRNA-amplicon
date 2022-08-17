@@ -1,4 +1,26 @@
-After we created all artifacts in qiime2 such as ASV table, repseqs, rooted tree, taxonomy table and metadata, now we can bring them into R by usign qiime2_R package in R. 
+After we created all artifacts in qiime2 such as ASV table, repseqs, rooted tree, taxonomy table and metadata, now we can bring them into R by usign qiime2_R package in R. But, we must first install and load the required packages:
+
+```R
+github.pkg <- c("jfukuyama/phyloseqGraphTest", "jbisanz/qiime2R") 
+bioc.pkg <- c("phyloseq", "DESeq2", "decontam", "MicrobiotaProcess")
+cran.pkg <- c("tidyverse", "pacman", "glue", "vegan", "devtools", "ggrepel", "reshape2", 
+              "ggnetwork", "DT", "intergraph","VennDiagram", "lsmeans", "pheatmap", "phyloseqGraphTest")
+inst.pkg <- cran.pkg %in% installed.packages()
+
+ 
+
+if (any(!inst.pkg)){ install.packages(cran.pkg[!inst.pkg],repos = "http://cran.rstudio.com/") } 
+ 
+inst.pkg <- github.pkg %in% installed.packages() 
+if (any(!inst.pkg)){ devtools::install_github(github.pkg[!inst.pkg], force = TRUE) } 
+
+
+inst.pkg <- bioc.pkg %in% installed.packages() 
+if(any(!inst.pkg)){ BiocManager::install(bioc.pkg[!inst.pkg])
+}
+```
+
+
 ## 
 ## 1. Importing rooted tree, ASV table and repseqs with the metadata to R using qiime2R package into R. 
 Using qiime2R package, we can bring all generated artifacts from qiime2 into R and integrate them into one phyloseq object by qiime_to_phyloseq()
