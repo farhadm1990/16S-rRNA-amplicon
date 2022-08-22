@@ -4,6 +4,52 @@ Before we continue on this jurney, I highly recommend you to check out the doc v
 Here we import the raw sequences into a qiime artifact. But first you need to download the amplicon data [here](https://www.dropbox1.com/scl/fo/o2j5uwiaynh6owsom9kf0/h?dl=0&rlkey=4qvl191j9zfx4332tfm4pul1k_notyet) and save it on your local drive. In order to bring the sequences from the local path (here they are saved on a folder in my cluster called 'amplicons', you must use this [bash command](https://github.com/farhadm1990/Microbiome_analysis/blob/main/scripts/import.sh). The input path must be defined by a [manifest file](https://github.com/farhadm1990/Microbiome_analysis/blob/main/manifestArranged.tsv), which includes the name of the sample and a path to each sample sequence for both forward (in one column) and reverse reads (in another column). Sequence data are paired end in the format of FASTA with quality score (Fastaq); therefore, in qiime2 the type will be "SampleData[PairedEndSequencesWithQuality]" and their imput format asigned as PairedEndFastqManifestPhred33V2.  
 Here is the command:
 
+# Temporary thread: inference investigation of data
+
+```Python
+## Exploring the reads
+zcat ./data/MAC2022_iSeq001_S1_L001_R2_001.fastq.gz 
+
+
+zcat ./data/MAC2022_iSeq001_S1_L001_R2_001.fastq.gz | grep ^@FS10000714| cut -d ":" -f1 | wc -l
+
+wc -l ./data/*_R1_001.fastq.gz | awk '{$1=$1};1'| cut -d" " -f1|datamash min 1
+wc -l ./data/*_R1_001.fastq.gz | awk '{$1=$1};1'| cut -d" " -f1|head -n -1|datamash max 1
+wc -l ./data/*_R1_001.fastq.gz | awk '{$1=$1};1'| cut -d" " -f1|head -n -1|datamash mean 1
+
+#reverse
+wc -l ./data/*_R2_001.fastq.gz| awk '{$1=$1};1' | cut -d " " -f1|datamash min 1
+wc -l ./data/*_R2_001.fastq.gz| awk '{$1=$1};1' | cut -d " " -f1|datamash max 1
+wc -l ./data/*_R2_001.fastq.gz| awk '{$1=$1};1' | cut -d " " -f1|datamash mean 1
+
+#searching for primers
+
+zcat ./data/MAC2022_iSeq001_S1_L001_R2_001.fastq.gz | head
+zgrep '^CCTACGGG.GGC.GCAG' ./data/MAC2022_iSeq001_S1_L001_R2_001.fastq.gz | wc -l
+zgrep '^GACTAC..GGGTATCTAATCC' ./data/MAC2022_iSeq001_S1_L001_R2_001.fastq.gz | wc -l
+```
+# Temporary thread: making manifest file for MAC2022 course
+
+```Python
+#path to forward
+ls -f /usr/home/qgg/fpanah/data/microbiome_analysis_ku/data/*_R1_001.fastq.gz | sort -V > r1path
+#path to reverse
+ls -f /usr/home/qgg/fpanah/data/microbiome_analysis_ku/data/*_R2_001.fastq.gz | sort -V > r2path
+
+#checking if we have all pairs of forward and reverse reads
+diff -s <(cat r1path | cut -d_ -f4) <(cat r2path | cut -d_ -f4) #if the outcome is "identical", then we good :)
+
+#Cutting sample IDs from the path file (from either is good)
+cut -d_ -f4 r1path > SampleID
+
+#adding sample ids to paths
+paste SampleID r1path r2path > manifest
+
+#Binning ids and forward reverse columns together with tab-delimited seperation
+sed -i $'1 i\\\nsampleid \t forward-absolute-filepath \t reverse-absolute-filepath' manifest
+
+```
+
 ```python
 #!/bin/bash
 #SBATCH -p ghpc_v3     #here is the name of the cluster node assigned for my work
