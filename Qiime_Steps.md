@@ -203,7 +203,7 @@ qiime feature-classifier fit-classifier-naive-bayes \   # here you can train you
 ```
 
 
-This `bash` task took around 12h on a cluster with 64G memory capacity. After you got `silva-classifier-primered4.qza` classifier file, you can use it for your taxonomic classifications as follows:
+This `bash` task took around 12h on a cluster with 64G memory capacity. After you got `silva-classifier-primered4.qza` classifier [file](https://www.dropbox.com/s/l0f9a6tivpb66s1/silva138-classifier-341f-805r.qza?dl=0), you can use it for your taxonomic classifications as follows:
 
 
 ```python
