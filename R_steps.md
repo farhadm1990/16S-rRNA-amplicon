@@ -244,8 +244,8 @@ out.ASV = function (phyloseq, threshold =1, binwidth = 0.01) {
                     } 
                       
                       
-                      names.single = t(apply(rel_abund, 1, function(x){ifelse(x == threshold, TRUE, ifelse(x == sum(x),
-                      TRUE, FALSE))})) %>% reshape2::melt() %>% filter(value == TRUE) %>% dplyr::select(2) %>%
+                      names.single = apply(rel_abund, 1, function(x){ifelse(x == threshold, TRUE, ifelse(x == sum(x),
+                      TRUE, FALSE))}) %>% reshape2::melt() %>% filter(value == TRUE) %>% dplyr::select(2) %>%
                       pull   %>% as.vector()
                       
                         
