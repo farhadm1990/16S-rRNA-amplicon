@@ -43,4 +43,6 @@ This module includes the following steps:
 
 # 
 
-#### [Citation](https://doi.org/10.5281/zenodo.7042850)
+### Citation
+
+Please cite the workflow if you have used it for your publications. You can use this link for [Citation](https://doi.org/10.5281/zenodo.7042850). 
