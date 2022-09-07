@@ -505,7 +505,7 @@ otu_table(physeq) <- otudat
     
 # take care of the uncultured genus
 taxdat[,6] = ifelse(taxdat[,6] == "uncultured", 
-       paste(taxdat[ , length(rank.names[1:which(rank.names=="Genus")])-1], "_", taxdat[,6]), paste(taxdat[,6]))
+       paste0(taxdat[ , length(rank.names[1:which(rank.names=="Genus")])-1], "_", taxdat[,6]), paste(taxdat[,6]))
 
   
 rownames(otudat) <- taxdat[rownames(taxdat) %in% rownames(otudat), taxa_level]
@@ -577,7 +577,9 @@ otu_table(physeq) <- otudat
 return(physeq) 
     }
     
- ```
+
+```
+
  
  Now we can use the `gloomer` function to agglomerate our reads to `Phylum` level and create the stacked barplot for the absolute counts.
  
