@@ -1801,7 +1801,7 @@ stop("Your treatment_prune entry must be TRUE/FALSE")
 
 
 asv = asv[!rownames(asv) %in% c("NA", "Unknown","", "uncharacterized", "unassigned", "unknown", "uncultured"), ] #to remove Unknown bacteria
-asv.relabund = asv %>% data.frame%>% mutate(rel.abund  = rowSums(asv)/ncol(asv)*100) 
+asv.relabund = asv %>% data.frame%>% mutate(rel.abund  = rowSums(asv)/sum(asv)*100) 
 
 #Filtering the ASVs who appeared in less than 30% of the samples out of the dataset
 threshold = filtering_threshold
@@ -1991,7 +1991,7 @@ V(graph.df)$rel.abund <- asv.relabund$rel.abund[rownames(asv.relabund) %in% name
 #V(graph.df)$sampleID <- rownames(node_met)
 
 #Edge atributes
-E(graph.df, directed = directed)$direction <- ifelse(E(graph.df)$cor[1]>0, "pos", "neg")
+E(graph.df, directed = directed)$direction <- ifelse(E(graph.df)$cor>0, "Pisitive", "Negative")
 E(graph.df, directed = directed)$color <- ifelse(E(graph.df)$cor>0, edge_pos_color, edge_neg_color)
 E(graph.df, directed = directed)$weight =round(abs(E(graph.df)$cor), 2)
 
@@ -2141,6 +2141,7 @@ structure(list(asv.filt = asv.filt, cor.pval = cor.pval, cor = cor, edge.df = ed
 
 
 }
+
 
 
 
