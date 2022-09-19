@@ -1967,7 +1967,7 @@ y = y_cor
 cor.filt = greacer(y = y, top_n_taxa = top_taxa, ps = ps, method = method, comp = comp, treat = treat_level, FDR = FDR)
 
 edge =cor.filt[abs(cor.filt$cor)>cor_threshold,]#we only choose the strongest correlations (> 0.55)
-
+edge = cor.filt[cor.filt$q.vals <= sig_threshold, ]
 edge$from <-edge$from %>% unfactor %>% factor #to relevel to the new levels
 edge$to <- edge$to %>% unfactor %>% factor
 
@@ -2141,6 +2141,8 @@ structure(list(asv.filt = asv.filt, cor.pval = cor.pval, cor = cor, edge.df = ed
 
 
 }
+
+
 
 
 
