@@ -28,7 +28,7 @@ zcat ./data/MAC2022_iSeq001_S1_L001_R2_001.fastq.gz | head
 zgrep '^CCTACGGG.GGC.GCAG' ./data/MAC2022_iSeq001_S1_L001_R2_001.fastq.gz | wc -l
 zgrep '^GACTAC..GGGTATCTAATCC' ./data/MAC2022_iSeq001_S1_L001_R2_001.fastq.gz | wc -l
 ```
-# Temporary thread2: making manifest file for MAC2022 course
+# Temporary thread2: making manifest file 
 
 ```Python
 #path to forward
