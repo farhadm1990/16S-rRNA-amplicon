@@ -431,7 +431,7 @@ gloomer = function(ps = data, taxa_level = taxa_level, NArm = "TRUE"){
     #since adding uncultured to uncultered is sill duplication. therefore if the taxa_level is set to species we first make a unique genus and then we go further to the speices===#
 
 #Removing unculured Family
-ps = subset_taxa(ps, !Family %in% c("uncultured", "NA"))
+ps = subset_taxa(ps, !Family %in% c("uncultured", "NA", "uncategorized", "unassigend"))
     
 if(taxa_level == "Species") {
 ps = subset_taxa(ps, !Genus %in% NA)#we remove genus tagged NA
@@ -444,7 +444,7 @@ tax_table(ps)[, taxa_level] <- ifelse(tax_table(ps)[, taxa_level] %in% NA, paste
     otudat = otu_table(physeq)
     
 #first take care of the uncultured genus
-taxdat[,6] = ifelse(taxdat[,6] == "uncultured", 
+taxdat[,6] = ifelse(taxdat[,6] %in% c("uncategorized", "uncultured", "unassigend"), 
        paste0(taxdat[ , length(rank.names[1:which(rank.names=="Genus")])-1], "_", taxdat[,6]), paste(taxdat[,6]))
 
 spec1 = taxdat[, taxa_level] %>% as.vector
@@ -504,7 +504,7 @@ otu_table(physeq) <- otudat
     otudat = otu_table(physeq)
     
 # take care of the uncultured genus
-taxdat[,6] = ifelse(taxdat[,6] == "uncultured", 
+taxdat[,6] = ifelse(taxdat[,6] %in% c("uncategorized", "uncultured", "unassigend"), 
        paste0(taxdat[ , length(rank.names[1:which(rank.names=="Genus")])-1], "_", taxdat[,6]), paste(taxdat[,6]))
 
   
@@ -576,6 +576,9 @@ otu_table(physeq) <- otudat
 }
 return(physeq) 
     }
+    
+
+    
     
 
 ```
