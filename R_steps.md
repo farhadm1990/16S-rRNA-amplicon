@@ -206,16 +206,15 @@ asv.filter = function(asvtab, n.samples = 5){
   return(suspected_ASV)
 }
 suspected_ASV = asv.filter(asvtab = otu_table(pst), n.samples = 5)            
+
 # you can derive the exact same results by the build-in phyloseq function 
 # Prevalence: in more than 5 samples
-
 TaxaTokeep <- genefilter_sample(pst.no.single, function(x) x>0, 5)                     
 
+ps <- pst
 #let's remove these below-5 sample ASVs from the dataset
-pst.prev = subset_taxa(pst, !taxa_names(pst)%in%suspected_ASV)
-#pst.prev = prune_taxa(TaxaTokeep, pst.no.single)  # you could also use this code for filtering     
-pst.prev   
-pst.ancom=pst.no.single     
+ps <- subset_taxa(ps, !taxa_names(ps) %in% suspected_ASV)
+rm(suspected_ASV)
 ```
 #
 ### Removing singletones based on abundance: Supervised
@@ -228,10 +227,10 @@ First make a relative abundance from the ASV count table and see which ASVs occu
 
 ```R
 #A function to find singletones. You need to be careful about this step!
-out.ASV = function (phyloseq, threshold =1, binwidth = 0.01) {
+out.ASV = function(phyloseq, threshold =1, binwidth = 0.01) {
   
 #Loading necessary pkgs      
-  pacman::p_load(glue, tidyverse, reshape2, ggrepel, S4Vectors)
+  pacman::p_load(glue, tidyverse, reshape2, ggrepel, S4Vectors) # nolint
 #This function requires phyloseq, tidyverse and glue packages to be loaded. 
     if (sum(colSums(otu_table(phyloseq)))/ncol(otu_table(phyloseq)) == 100 ) {#making the relative abundance table
                     rel_abund = as(t(otu_table(phyloseq)), "matrix")
@@ -283,15 +282,15 @@ out.ASV = function (phyloseq, threshold =1, binwidth = 0.01) {
                              
         }
                         
-single.test = out.ASV(phyloseq = pst, threshold = 1, binwidth = 0.1)
+single.test = out.ASV(phyloseq = ps, threshold = 1, binwidth = 0.1)
 #singletones = single.test[[3]] #here you can extract the names of the singletones
 
 single.test[[1]]#to show the plot with singletones
 single.test[[2]]#to show the plot without singletones
 
-#Now you can remove the singletones from your pst file as follows:
-pst.no.single = subset_taxa(pst, !taxa_names(pst)%in% singletones)
-pst = pst.no.single
+#Now you can remove the singletones from your ps file as follows:
+ps = subset_taxa(ps, !taxa_names(ps)%in% singletones)
+ 
 ```
 The outcome of this function is a barplot showing the relative abundance of taxa on `x` axis and their counts across the count table on the `y` axis. If there is not singletones, the barplot should show no counts on relative abundance of `1` on `x` axis. 
 
@@ -306,24 +305,97 @@ single.test[[1]]
 
 #
 
-#### Taxonomic filtering based on minimum threshold abundance 
+#### Taxonomic filtering based on minimum threshold abundance: optional
 Unlike the prevoius step, which we removed the ones with outmost abundance `1` or `100%`, here, we look for those with a minimum threshold abundacne, i.e. an ASV should occure in > 0.01% across all samples to pass the filter.
 
 ```R
 # Abumdance: ASV > 0.01% overall abundance across all samples
-total.depth <- sum(otu_table(pst.prev))
+total.depth <- sum(otu_table(ps))
 totAbuThreshold <- 1e-4 * total.depth
-pst <- prune_taxa(taxa_sums(pst.prev)>totAbuThreshold, pst.prev)
+#ps <- prune_taxa(taxa_sums(ps)>totAbuThreshold, pst.prev)
 
 ```
 
-Since in this study we are only interested in the changes of bacteria depending on our environmental factors, we remove all non-bacterial ASVs in the Kingdom level.
+Since in this study we are only interested in the changes of bacteria depending on our environmental factors, we remove all non-bacterial ASVs in the Domain level.
 
 ```R
 #now, we only keep the bacterial kingdom and remove the rest.
-pst = subset_taxa(pst, Kingdom == "d__Bacteria")
-pst
+ps = subset_taxa(ps, Kingdom == "d__Bacteria")
+ps
 ```
+
+# 
+
+### Converting reads from relative abundance to absolute abundance
+
+For each sample we extracted total load of 16S rRNA copy-number genes by perfomring a qPCR and we use them to convert the relative abundnce counts into aboslute abundance. Since we only did that for samples from proximal, distal and feces, we prune our samples to these types. Then we convert the counts into relative abundance and multiply them to the total load of 16S rRNA genes for each correspondent samples. 
+
+### Renaming treatment and segment levels and removing the feces1
+```R
+ps = prune_samples(sample_data(ps)$sample_type %in% 
+c("digesta_25", "digesta_75",  "faeces_1" ), ps)
+
+sample_data(ps)$treatment <- ifelse(sample_data(ps)$treatment == "ct", "CT", 
+ifelse(sample_data(ps)$treatment == "gb", "WD",
+ifelse(sample_data(ps)$treatment == "dss", "DSS", "WDDSS")))
+
+sample_data(ps)$treatment<-factor(sample_data(ps)$treatment, levels = c('CT','WD','DSS', 'WDDSS'))
+
+sample_data(ps)$sample_type <- ifelse(sample_data(ps)$sample_type == "digesta_25", "Proximal", 
+ifelse(sample_data(ps)$sample_type == "digesta_50", "Midcolon",
+ifelse(sample_data(ps)$sample_type == "digesta_75", "Distal", "Feces"))) %>% factor(levels = c("Proximal", "Midcolon", Distal", "Feces"))
+```
+
+```R
+#Prunning the samples
+
+pst.qPCR = prune_samples(sample_data(ps)$sample_type %in% c("Proximal", "Distal", "Feces"), ps) 
+
+#qpcr data
+met.dat <- read.table("./Metadata/qPCR_metadat.tsv", header = T, row.names = 1) 
+ps@sam_data$copy_number <-met.dat %>% select(copy_number) 
+met.temp <- ps@sam_data%>% data.frame
+
+#converting to rel abund 
+ps.rel <- transform_sample_counts(ps, function(x) x/sum(x))
+
+abs.count = otu_table(ps.rel) %>% as.matrix() 
+cpy.nr = sample_data(ps.rel)$copy_number %>% as.matrix() %>% t()
+
+#This multiplication takes a bit of time
+
+temp <- matrix(NA, ncol = ncol(abs.count), nrow = nrow(abs.count), 
+dimnames = list(rownames(abs.count), colnames(abs.count)))
+for(i in 1:nrow(temp)){
+  for(j in 1:ncol(temp)){
+    temp[i, j] <- abs.count[i, j] * cpy.nr[1, j]
+  }
+}
+
+#you can save this table
+write.table( x = temp, file = "./absolute.tsv", sep = "\t")
+
+#converting the counts 
+abs.count = apply(temp, 2, function(x) round(x))
+otu_table(ps) <- otu_table(abs.count, taxa_are_rows = T)
+
+#Now we save a copy of ps file into ps.vst for variance-stabilizing transformation
+ps.vst <- ps
+```
+
+## Variance stabilizing transformation
+```{r}
+library(DESeq2)
+vst.count = DESeq2::varianceStabilizingTransformation(abs.count, blind = FALSE)
+
+otu_table(ps.vst) <- otu_table(vst.count, taxa_are_rows = T)
+```
+
+# 
+
+## 3. Alpha diversity
+
+Estimating alpha diversity, diversity within sample, using `estimate_richness` function of `phyloseq` package.
 
 #
 
@@ -336,7 +408,7 @@ You can do rarefaction using `rarefy_even_depth` funciton from `rarefy_even_dept
 ```R
 library(MicrobiotaProcess)
 
-ps_rar_curve <- ggrarecurve(obj = pst, 
+ps_rar_curve <- ggrarecurve(obj = ps, 
                      indexNames = c("Observe", "Shannon"),
                      chunks = 400, 
                      theme(legend.spacing.y = unit(0.02, "cm"),
@@ -351,67 +423,387 @@ ps_rar_curve
 With the following code you can perform rarefaction:
 
 ```R
-pst_rar_repF <- phyloseq::rarefy_even_depth(pst, sample.size = 17000, replace = F) #without replacement and 17000 sampling depth
+ps.rar <- phyloseq::rarefy_even_depth(ps, sample.size = 17000, replace = F) #without replacement and 17000 sampling depth
 
+#After rarefaction, we convert the rarefied file to absolute count
+ps.rar <- phyloseq::rarefy_even_depth(ps.rar, sample.size = 17000, replace = F)
+
+# now that we rarfied the taxa, we can convert the relabund to absolute abund
+ps.rar.rel <- transform_sample_counts(ps.rar, function(x)x/sum(x))
+met.dat <- read.table("./Metadata/qPCR_metadat.tsv", header = T, row.names = 1)
+cpy.nr <- met.dat %>% select(copy_number) %>% as.matrix() %>% t() 
+
+
+abs.count.rar <- otu_table(ps.rar.rel) %>% as.matrix()
+
+temp <- matrix(NA, ncol = ncol(abs.count.rar), nrow = nrow(abs.count.rar), 
+dimnames = list(rownames(abs.count.rar), colnames(abs.count.rar)))
+for(i in 1:nrow(temp)){
+  for(j in 1:ncol(temp)){
+    temp[i, j] <- abs.count.rar[i, j] * cpy.nr[1, j]
+  }
+}
+
+
+
+temp <- round(temp)
+otu_table(ps.rar) <- otu_table(temp, taxa_are_rows = T)
+
+rm(ps.rar.rel, met.dat, cpy.nr, abs.count.rar)
 ```
-# 
 
-### Converting reads from relative abundance to absolute abundance
-
-For each sample we extracted total load of 16S rRNA copy-number genes by perfomring a qPCR and we use them to convert the relative abundnce counts into aboslute abundance. Since we only did that for samples from proximal, distal and feces, we prune our samples to these types. Then we convert the counts into relative abundance and multiply them to the total load of 16S rRNA genes for each correspondent samples. 
-
-```R
-#Prunning the samples
-
-pst.qPCR = prune_samples(sample_data(pst.rar.clean)$sample_type %in% c("Proximal", "Distal", "Feces"), pst_rar_repF) 
-
-# Converting the observed counts to relative abundant.
-pst.qPCR.relab <- transform_sample_counts(physeq = pst.qPCR, fun = function(x) x/sum(x))
-
- # Normalizing the counts into their absolute abundance
-pst.abs.rel = t(otu_table(pst.qPCR.relab)) * sample_data(pst.qPCR)$copy_number
-pst.abs.rel = t(pst.abs.rel)                                          
-pst.abs.rel = apply(pst.abs.rel, 2, function(x) round(x))
-
-otu_table(pst.qPCR) <- otu_table(pst.abs.rel, taxa_are_rows = TRUE) 
-
-# You can also make a copy of your data as log-transformed
-
-pst.qPCR.log = transform_sample_counts(pst.qPCR, function(x) {log(x+1)})
-```
-# 
-
-## 3. Alpha diversity
-
-Estimating alpha diversity, diversity within sample, using `estimate_richness` function of `phyloseq` package.
-
+## Calculating the alpha diversity indexes for rarefied data data:
 ```R
 
-#Calculating the alpha diversity indexes for qPCR data:
+
 #Richness is the number of observed ASVs
  
-Chao1 =estimate_richness(pst, split = TRUE, measures = "Chao1") #for richness, we don't use rarefied table
+Chao1 =estimate_richness(ps, split = TRUE, measures = "Chao1") #for richness, we don't use rarefied table
 
 #Diversity: takes both observed and evenness into account in a  way that it shows that if the community has similar abundances. Therefore, a community with a high diversity has a lot of species with similar abundances. A community with many species but only a single dominant one has a lower diversity. Shannon is an index for diversity measurement and it can be 4 or hihger in value. 
-Shannon = estimate_richness(pst.qPCR, split = TRUE, measures = "Shannon")
+Shannon = estimate_richness(ps.rar, split = TRUE, measures = "Shannon")
 
 #Evenness: it is the probability of if two bacteria belong to the same speices. In other word, how even the abundance of bacteria are. since it is probabilility, the value for evenness index, e.g. Pielou, is always between 0-1.
-normcount = apply(otu_table(pst.qPCR), 2, function(x) x/sum(x))#we need a relative abundance count to measure Pielou
+normcount = apply(otu_table(ps.rar), 2, function(x) x/sum(x))#we need a relative abundance count to measure Pielou
 ASVcount = colSums(normcount != 0)                  
 Pielou = Shannon / log(ASVcount)     #pielou corrects the shannon index for speices number             
-Simpson = estimate_richness(pst.qPCR, split = TRUE, measures = "Simpson")                  
+Simpson = estimate_richness(ps.rar, split = TRUE, measures = "Simpson")                  
 
 #Phylogenetic distance                   
 library(picante)
-FaithPD = pd(t(otu_table(pst.qPCR)), tree = phy_tree(pst.qPCR), include.root = F)$PD
+FaithPD = pd(t(otu_table(ps.rar)), tree = phy_tree(ps.rar), include.root = F)$PD
                   
 #Adding the indexes to the metadatas              
-sample_data(pst.qPCR) <- data.frame(sample_data(pst.qPCR), Chao1=Chao1[[1]],
+sample_data(ps.rar) <- data.frame(sample_data(ps.rar), Chao1=Chao1[[1]],
                                     Shannon = Shannon$Shannon,  FaithPD = FaithPD)   
-sample_data(pst.qPCR)   
+
+alpha.df <- sample_data(ps.rar)
 
 
 ```
+# 
+
+## 4. Statistical analysis on alpha diversity metrics: Generalized Linear Mixed Effect Model (GLMEM)
+
+This experiment was done in a 3 complete blocks with a `2 x 2` factorial design for the treatment arrangement on 23 6-week old piglets. In each block/round, we have used 2 litters (sow from which we got the piglets). After `19` days of experiemnt, piglets were sacrificed and digesta samples were taken from their proximal and distal colon and feces. In each round of experiment (n = 3), there were `4` pens in which 2 pigs were housed.
+
+```R
+
+library(nlme)
+library(lme4)
+library(lmerTest)
+library(car)
+library(lsmeans)
+library(postHoc)
+library(multcomp)
+
+#A function for fitting the model and extracting table results for glmer with interaciton terms. In this function there is a buit-in rounder funciton which returns the desired number of digits in the numeric tables. 
+
+glmer.helper <- function(df, response, formu, pair.form, plot.form, n.round, st.seed = 10){
+  models <-list()
+  summeries <- list()
+  emms <- list()
+  contrs <- list()
+  plots <- list()
+  pacman::p_load(nlme, lme4, lmerTest, car, lsmeans, postHoc, multcomp, glue)
+
+#a function to round numbers and give you numeric values with your desired number of digits. E.g. if you want your table to show numbers in 3 digits, you can uniformly round your table to get numbers in 3 digits etc.
+rounder <- function(x, n.round = 3) {
+x = as.numeric(x)
+
+if (grepl(x = round(x, n.round), pattern = ".", fixed = T) & 
+trunc(x) != 0  & 
+nchar(trunc(abs(x))) >= n.round) {
+  
+ x = round(x)
+
+}  else if (trunc(x) == 0 &
+nchar(round(abs(x), digits = n.round-1)) == n.round ){
+
+ x = paste0(round(x, digits = n.round-1), ".0")
+  
+} else if (trunc(x) == 0 & 
+nchar(round(abs(x), digits = n.round-1)) == n.round +1){
+
+ x = round(x, digits = n.round-1)
+  
+} else if (trunc(x) == 0 & 
+nchar(round(abs(x), digits = n.round-1)) < n.round ){
+
+ x = paste0(round(x, digits = n.round-1), ".0")
+
+} else if (trunc(x) !=0 &
+ nchar(round(abs(x), digits = n.round-1)) == n.round + 1){
+
+  x = round(x, digits = n.round-1)
+
+} else if (trunc(x) !=0 & nchar(round(abs(x))) == nchar(trunc(abs(x))) ){
+ x = round(x, digits = n.round - nchar(trunc(abs(x))))
+
+ if(nchar(abs(x))<n.round){
+
+  x = paste0(x, ".0")
+
+ } else {
+  x = x
+ }
+
+}
+return(x)
+}
+
+#here I vectorize my function to work for vectors as well
+rounder <- Vectorize(FUN = rounder)
+
+#model
+  for(i in response){
+  formula <- as.formula(paste(i, formu))
+  formula.compare <- as.formula(pair.form)
+  formula.plot <- as.formula(plot.form)
+
+  ml <- glmer(formula = formula,
+            data = df, family = Gamma(link = "log"), 
+            control = glmerControl(c("bobyqa", "bobyqa")))
+
+#models
+  models[[i]] <-ml
+#summaries
+  summeries[[i]] <- summary(ml)
+#emmeans
+  set.seed(seed = st.seed)
+
+  emms[[i]] <- emmeans(ml, formula.compare,  type = "response")$emmeans %>% 
+  cld( adjust = "BH", Letters = letters) %>% 
+  data.frame() %>% 
+  mutate(new.arg = paste0(gb, dss)) %>%
+  mutate(treat = ifelse(new.arg == "NoNo", 
+  "CT", ifelse(new.arg == "YesNo", 
+  "WD", ifelse(new.arg == "NoYes", 
+  "DSS", "WDDSS")))) %>% group_by(sample_type)%>% 
+  mutate(check = ifelse( unique(.group) %>% length() > 1, "TRUE", "FALSE")) %>% 
+  mutate(resps = ifelse(check == "TRUE",
+  glue("{round(response,1)} ({round(asymp.LCL,2)}-{round(asymp.UCL,2)}){.group}"), 
+  glue("{round(response,1)} ({round(asymp.LCL,2)}-{round(asymp.UCL,2)})"))) %>% 
+  dplyr::select(-gb, -dss, -new.arg, -df, 
+  -asymp.LCL, -asymp.UCL, -response, -SE, -.group, - check) %>% 
+  pivot_wider(names_from = treat, values_from = resps)  
+
+#contrasts
+  set.seed(seed = st.seed)
+
+  contrs[[i]] <- emmeans(ml, formula.compare, type = "response")$contrasts %>% 
+  cld(Letters = letters, adjust = "BH") %>%
+  data.frame() %>%
+  mutate(contr = ifelse(contrast == "No No / No Yes", 
+  "CT vs. DSS", ifelse(contrast== "No No / Yes No", 
+  "CT vs. WD", ifelse(contrast == "Yes No / No Yes", 
+  "WD vs. DSS", ifelse(contrast == "No No / Yes Yes",
+  "CT vs. WDDSS", ifelse(contrast == "Yes No / Yes Yes", 
+  "WD vs. WDDSS", "DSS vs. WDDSS" )))))) %>%
+  dplyr::select(-df, -null, -contrast,-p.value, -SE, -z.ratio, -ratio)%>% 
+  pivot_wider(names_from = contr, values_from = .group) 
+
+  #plots
+  formula3 <- 
+  plots[[i]] <- emmip(ml, formula.plot) + theme_bw() + ggtitle(glue("Interaction plot for {i}"))          
+  }
+  
+  structure(list(models, summeries, emms, contrs, plots))
+}
+
+
+
+resps <- colnames(alpha.df)[c(12:14)]
+
+test <- glmer.helper(df = alpha.df, response = resps, st.seed = 10, 
+pair.form = "pairwise ~ gb + dss | sample_type",
+formu = " ~ gb *dss * sample_type   + blok + (1|pig_no)",
+plot.form = "dss~gb | sample_type")
+
+#sample-type 
+samps <- list()
+for(i in resps){
+samps[[i]] = emmeans(test[[1]][[i]], ~ sample_type, type = "response", adjust = "BH") %>%  cld(Letters = letters,  confit.glht = "BH")%>%
+data.frame() %>% 
+mutate(check = ifelse( unique(.group) %>% length() > 1, "TRUE", "FALSE")) %>% 
+  mutate(resps = ifelse(check == "TRUE",
+  glue("{rounder(response,3)}({rounder(asymp.LCL,3)}-{rounder(asymp.UCL,3)}){.group}"), 
+  glue("{rounder(response,3)}({rounder(asymp.LCL,3)}-{rounder(asymp.UCL,3)})"))) %>% 
+  dplyr::select(-df, -response, -.group, -check, -asymp.UCL, -asymp.LCL,   -SE) #%>% 
+  #pivot_wider(names_from = sample_type, values_from = resps) 
+}
+
+
+
+#pooling sample_type
+pools <- list()
+
+for(i in resps){
+  pools [[i]] <- emmeans(test[[1]][[i]], pairwise ~ gb + dss,  type = "response")$emmeans %>% 
+  cld( adjust = "BH", Letters = letters) %>% 
+  data.frame() %>% 
+  mutate(new.arg = paste0(gb, dss)) %>%
+  mutate(treat = ifelse(new.arg == "NoNo", 
+  "CT", ifelse(new.arg == "YesNo", 
+  "WD", ifelse(new.arg == "NoYes", 
+  "DSS", "WDDSS")))) %>% 
+  mutate(check = ifelse( unique(.group) %>% length() > 1, "TRUE", "FALSE")) %>% 
+  mutate(resps = ifelse(check == "TRUE",
+  glue("{round(response,2)} ({round(asymp.LCL,2)}-{round(asymp.UCL,2)}){.group}"), 
+  glue("{round(response,2)} ({round(asymp.LCL,2)}-{round(asymp.UCL,2)})"))) %>% 
+  dplyr::select(-gb, -dss, -new.arg, -df, 
+  -asymp.LCL, -asymp.UCL, -response, -SE, -.group, - check) %>% 
+  pivot_wider(names_from = treat, values_from = resps)
+}
+
+#writing up the results
+lapply(test[[3]], function(x) write.table( data.frame(x), './AlphaDiversity/alpha.tsv', append= T, sep= "\t", row.names = F))
+
+
+alpha.res <- data.frame(alpha = rep(c("Chao1", "Shannon", "FaithPD"),  each = 3), rbind(test[[3]]$Chao1, test[[3]]$Shannon, test[[3]]$FaithPD))
+
+write.table(alpha.res, './AlphaDiversity/alpha.tsv', sep = "\t")
+
+
+```
+
+Now you can extract the parwise comparisons from the model to be used for figure annotations.
+
+```R
+#extracted pairwise comparisons from the model
+
+chao.pairs = chao.pairs %>% as.data.frame %>% rownames_to_column("order") %>% arrange(order)
+shannon.pairs = shan.pairs %>% as.data.frame %>% rownames_to_column("order") %>% arrange(order)
+faith.pairs = faith.pairs %>% as.data.frame %>% rownames_to_column("order") %>% arrange(order)
+
+
+#creating df for the manual pvalue
+chao.stat = chao.pairs %>% mutate(group1 = factor(c("CT", "CT", "CT", "GB", "GB", "DSS"), levels = c("CT", "GB", "DSS") ), 
+                       group2 = factor( c("GB", "DSS", "GBDSS", "DSS", "GBDSS", "GBDSS"), levels = c("GB", "DSS", "GBDSS" )),
+                       p =ifelse(chao.pairs$p.value < 0.06 & chao.pairs$p.value > 0.01 , "*", 
+                           ifelse(chao.pairs$p.value < 0.01 &  chao.pairs$p.value > 0.001, "**",
+                           ifelse(chao.pairs$p.value < 0.001 , "***", "ns")))) %>% as_tibble
+
+shannon.stat =  shannon.pairs %>% mutate(group1 = factor(c("CT", "CT", "CT", "GB", "GB", "DSS"), levels = c("CT", "GB", "DSS") ), 
+                       group2 = factor( c("GB", "DSS", "GBDSS", "DSS", "GBDSS", "GBDSS"), levels = c("GB", "DSS", "GBDSS" )),
+                       p =ifelse(shannon.pairs$p.value < 0.06 & shannon.pairs$p.value > 0.01 , "*", 
+                           ifelse(shannon.pairs$p.value < 0.01 &  shannon.pairs$p.value > 0.001, "**",
+                           ifelse(shannon.pairs$p.value < 0.001 , "***", "ns")))) %>% as_tibble
+
+faith.stat =  faith.pairs %>% mutate(group1 = factor(c("CT", "CT", "CT", "GB", "GB", "DSS"), levels = c("CT", "GB", "DSS") ), 
+                       group2 = factor( c("GB", "DSS", "GBDSS", "DSS", "GBDSS", "GBDSS"), levels = c("GB", "DSS", "GBDSS" )),
+                       p =ifelse(faith.pairs$p.value < 0.06 & faith.pairs$p.value > 0.01 , "*", 
+                           ifelse(faith.pairs$p.value < 0.01 &  faith.pairs$p.value > 0.001, "**",
+                           ifelse(faith.pairs$p.value < 0.001 , "***", "ns")))) %>% as_tibble
+```
+
+```R
+#extracted pairwise comparisons from the model
+
+chao.pairs = chao.pairs %>% as.data.frame %>% rownames_to_column("order") %>% arrange(order)
+shannon.pairs = shan.pairs %>% as.data.frame %>% rownames_to_column("order") %>% arrange(order)
+faith.pairs = faith.pairs %>% as.data.frame %>% rownames_to_column("order") %>% arrange(order)
+
+
+#creating df for the manual pvalue
+chao.stat = chao.pairs %>% mutate(group1 = factor(c("CT", "CT", "CT", "GB", "GB", "DSS"), levels = c("CT", "GB", "DSS") ), 
+                       group2 = factor( c("GB", "DSS", "GBDSS", "DSS", "GBDSS", "GBDSS"), levels = c("GB", "DSS", "GBDSS" )),
+                       p =ifelse(chao.pairs$p.value < 0.06 & chao.pairs$p.value > 0.01 , "*", 
+                           ifelse(chao.pairs$p.value < 0.01 &  chao.pairs$p.value > 0.001, "**",
+                           ifelse(chao.pairs$p.value < 0.001 , "***", "ns")))) %>% as_tibble
+
+shannon.stat =  shannon.pairs %>% mutate(group1 = factor(c("CT", "CT", "CT", "GB", "GB", "DSS"), levels = c("CT", "GB", "DSS") ), 
+                       group2 = factor( c("GB", "DSS", "GBDSS", "DSS", "GBDSS", "GBDSS"), levels = c("GB", "DSS", "GBDSS" )),
+                       p =ifelse(shannon.pairs$p.value < 0.06 & shannon.pairs$p.value > 0.01 , "*", 
+                           ifelse(shannon.pairs$p.value < 0.01 &  shannon.pairs$p.value > 0.001, "**",
+                           ifelse(shannon.pairs$p.value < 0.001 , "***", "ns")))) %>% as_tibble
+
+faith.stat =  faith.pairs %>% mutate(group1 = factor(c("CT", "CT", "CT", "GB", "GB", "DSS"), levels = c("CT", "GB", "DSS") ), 
+                       group2 = factor( c("GB", "DSS", "GBDSS", "DSS", "GBDSS", "GBDSS"), levels = c("GB", "DSS", "GBDSS" )),
+                       p =ifelse(faith.pairs$p.value < 0.06 & faith.pairs$p.value > 0.01 , "*", 
+                           ifelse(faith.pairs$p.value < 0.01 &  faith.pairs$p.value > 0.001, "**",
+                           ifelse(faith.pairs$p.value < 0.001 , "***", "ns")))) %>% as_tibble
+
+
+``` 
+
+## Plot for alpha diversity
+```R
+
+library(ggpubr)
+library(reshape2)
+#Creating plots with mannually-added pvalues
+
+long_data = melt(alpha.df)
+chao.stat 
+#Chao
+long_mtdat = long_data[long_data$variable %in% c("Chao1"),]
+
+ggboxplot(long_mtdat, x = "treatment", y = "value", width = 0, facet.by = "variable") +
+geom_violin( aes(fill = treatment), alpha=0.7, trim = FALSE)+
+geom_boxplot(width =0.15, outlier.color = NA)+
+stat_pvalue_manual( data = chao.stat, y.position = 700,
+xmin = "group1", xmax = "group2", step.increase =0.1, label = "p")  +
+geom_jitter(aes(color = treatment), alpha = 0.4, size = 2, show.legend = F) +
+scale_fill_manual(values = c("deeppink1", "deepskyblue", "darkorange",  "springgreen4"))+ 
+scale_color_manual(values = c("deeppink1", "deepskyblue", "darkorange",  "springgreen4"))+
+labs(fill= "Treatment", 
+title = "Violin plot of Chao1 based on absolute counts", y = "Alpha diversity",
+x = "Treatment") + theme_bw() + 
+theme(text = element_text(size =11, face = "bold")) 
+
+ggsave(filename = "./alpha_dss_abs_chao.jpeg", device = "jpeg", dpi = 300, width = 5)
+
+#Shannon
+long_mtdat = long_data[long_data$variable %in% c("Shannon"),]
+
+ggboxplot(long_mtdat, x = "treatment", y = "value", width = 0, facet.by = "variable") +
+geom_violin( aes(fill = treatment), alpha=0.7, trim = FALSE)+ 
+geom_boxplot(width =0.15, outlier.color = NA)+ stat_pvalue_manual( data = shannon.stat, y.position = 5.85,
+                                                                  xmin = "group1", xmax = "group2", step.increase =0.1, label = "p")  +
+geom_jitter(aes(color = treatment), alpha = 0.4, size = 2, show.legend = F) +
+scale_fill_manual(values = c("deeppink1", "deepskyblue", "darkorange",  "springgreen4"))+ scale_color_manual(values = c("deeppink1", "deepskyblue", "darkorange",  "springgreen4"))+
+labs(fill= "Treatment", title = "Violin plot of shannon antropy based on absolute counts", y = "Alpha diversity",
+x = "Treatment") + theme_bw() + 
+theme(text = element_text(size =11, face = "bold"))
+
+ggsave( filename = "./alpha_dss_abs_shan.jpeg", device = "jpeg", dpi = 300, width = 5)
+
+#Faith
+long_mtdat = long_data[long_data$variable %in% c("FaithPD"),]
+
+ggboxplot(long_mtdat, x = "treatment", y = "value", width = 0, facet.by = "variable") +
+geom_violin( aes(fill = treatment), alpha=0.7, trim = FALSE)+ 
+geom_boxplot(width =0.15, outlier.color = NA)+ stat_pvalue_manual( data = faith.stat, y.position = 35.8,
+                                                                  xmin = "group1", xmax = "group2", step.increase =0.1, label = "p")  +
+geom_jitter(aes(color = treatment), alpha = 0.4, size = 2, show.legend = F) +
+scale_fill_manual(values = c("deeppink1", "deepskyblue", "darkorange",  "springgreen4"))+ scale_color_manual(values = c("deeppink1", "deepskyblue", "darkorange",  "springgreen4"))+
+labs(fill= "Treatment", title = "Violin plot of FaithPD based on absolute counts", y = "Alpha diversity",
+x = "Treatment") + theme_bw() + 
+theme(text = element_text(size =11, face = "bold"))
+
+ggsave(filename = "./alpha_dss_abs_faith.jpeg", device = "jpeg", dpi = 300, width = 5)
+
+```
+![alt text](https://github.com/farhadm1990/Microbiome_analysis/blob/main/Pix/alpha_dss_abs_faith.jpeg)
+> Figure 10. Violin plot of FaithPD metric for four treatments. Pairwise comparisons were adjusted by BH at P < 0.5.
+
+#
+
+
+## 5. Beta diversity: diversity between samples
+
+Before measuring beta diveristy, it is worth to know that unlike alpha diversity which deals with differences of diversity within samples, beta diversity accounts for diversity and differences in community between groups of samples. In this chapter we `phyloseq` and `vegan` packages. There are different beta diversity metrics such as Jaccard index, Bray-Curtis dissimilarity or UniFrac distance.  
+
+#### The Jaccard distance: 
+To calculate the Jaccard index, we take the intersection (the number of species present in both samples) and divide this 
+by the total number of species, or their union. 
+
+#### Bray-Curtis dissimilarity:
+Bray-courtis, unlike the Jaccard (only taking presence absence into account), accounts for the number of features in each groups (evenness). Therefore, it is to say that Bray-curtis is the beta equivalent of Shannon in alpha. To measure Breay-Curtis dissimilarity matrix, we first look at the abundances, or the total counts, of species shared between the two samples. Next, we take the smallest value for each of the shared species. We add all these smallest values and multiply it by two. Next, we divide this by the sum of the values in both samples. This dissimilarity matrix has range of 0 (similar) to 1 (dissimilar).
+
+#### UniFrac Phylogenetic Distance
+The UniFrac distance does not use species directly. Instead, it works with a phylogenetic tree. The phylogenetic tree is made from differences between genes. Species on branches close together in the tree have more similar genes. Instead of counting species present in both samples, we sum the lengths of branches that are not shared and divide them by the sum of all branch lengths (unweighted UniFrac) and if you multiply the branch lenghts to the abundance of taxa it will be called weighted UniFrac.
 
 #
 
@@ -419,6 +811,7 @@ sample_data(pst.qPCR)
 
 Since we can create stacked barplot for different taxon levels and the ASV IDs are rather complicated and long to read, you can use the following function to agglomerate your taxa into a certain level by giving them the level name as the row names.
 
+### Gloomer: a fancy funciton for wrapint tax_glom()
 ```R
 #A function to create unique names for each ASV. It removes any NA in Order level then attempts to use the name of one level higher taxa for those 
 #who have similar names, e.g. uncultured_bacterium
@@ -431,22 +824,23 @@ gloomer = function(ps = data, taxa_level = taxa_level, NArm = "TRUE"){
     #since adding uncultured to uncultered is sill duplication. therefore if the taxa_level is set to species we first make a unique genus and then we go further to the speices===#
 
 #Removing unculured Family
-ps = subset_taxa(ps, !Family %in% c("uncultured", "NA", "uncategorized", "unassigend"))
+ps = subset_taxa(ps, !Family %in% c("uncultured", "NA", "uncategorized", "unassigend", "", " "))
     
 if(taxa_level == "Species") {
-ps = subset_taxa(ps, !Genus %in% NA)#we remove genus tagged NA
-tax_table(ps)[, taxa_level] <- ifelse(tax_table(ps)[, taxa_level] %in% NA, paste0("unknown"), paste(tax_table(ps)[, taxa_level]))#convert NA in species into unknown
+
+    ps = subset_taxa(ps, !Genus %in% NA)#we remove genus tagged NA
+tax_table(ps)[, taxa_level] <- ifelse(is.na(tax_table(ps)[, taxa_level]), paste0("unknown"), paste(tax_table(ps)[, taxa_level]))#convert NA in species into unknown
     
   physeq = tax_glom(physeq = ps, taxrank = taxa_level, NArm = NArm)
-    taxdat = tax_table(physeq)[, seq_along(rank.names[1:which(rank.names == taxa_level)])]
-    
+  taxdat = tax_table(physeq)[, seq_along(rank.names[1:which(rank.names == taxa_level)])]
+
    taxdat = taxdat[complete.cases(taxdat),] %>% as.data.frame
     otudat = otu_table(physeq)
-    
+   
 #first take care of the uncultured genus
-taxdat[,6] = ifelse(taxdat[,6] %in% c("uncategorized", "uncultured", "unassigend"), 
-       paste0(taxdat[ , length(rank.names[1:which(rank.names=="Genus")])-1], "_", taxdat[,6]), paste(taxdat[,6]))
-
+taxdat[,6] = ifelse(taxdat[,6] %in% c("uncategorized", NA, "uncultured", "unassigend", "", " "),
+       paste0("[", taxdat[,length(rank.names[1:which(rank.names=="Genus")])-1], "]", "_", taxdat[,6]), taxdat[,6])
+    
 spec1 = taxdat[, taxa_level] %>% as.vector
 spec2  = taxdat[, taxa_level] %>% as.vector
 
@@ -461,22 +855,44 @@ rownames(uni) <-spec1
 colnames(uni) <- spec2   
 uni[upper.tri(uni, diag = TRUE)] = 0 #get rid of diagonals and upper triangle
 
-duplis = uni %>% melt %>% filter(value == "TRUE") 
+duplis = uni %>% reshape2::melt() %>% filter(value == "TRUE") 
 
 if(dim(duplis)[[1]] > 0) {
-duplis = uni %>% melt %>% filter(value == "TRUE") %>% dplyr::select(1) %>% unique() %>% unlist %>% as.vector
-taxdat = taxdat %>% mutate( uni= ifelse(taxdat[, taxa_level] %in% duplis, 
-                    paste0(taxdat[,length(rank.names[1:which(rank.names==taxa_level)])-1], "_", taxdat[,taxa_level]), taxdat[,taxa_level]))
+duplis = uni %>% reshape2::melt() %>% filter(value == "TRUE") %>% dplyr::select(1) %>% unique() %>% unlist %>% as.vector
+taxdat = taxdat %>% mutate( uni= ifelse(taxdat[, taxa_level] %in% duplis,
+                    paste0("[", taxdat[,length(rank.names[1:which(rank.names==taxa_level)])-1], "]", "_", taxdat[,taxa_level]), taxdat[,taxa_level]))
 
-    taxdat[, taxa_level] = taxdat[, "uni"]
+#check if all the names are unique at species level, otherwise we will bring family instead of genus
+   dupies <-  taxdat[duplicated(taxdat[,"uni"]), "uni"] 
+    if(length(dupies)>0) {
+        taxdat = taxdat %>% data.frame %>% mutate( uni2= ifelse(taxdat[, "uni"] %in% dupies,
+                    paste0("[", taxdat[,length(rank.names[1:which(rank.names==taxa_level)])-2], "]", "_", taxdat[,"uni"]), taxdat[,"uni"]))
+        
+        taxdat[, taxa_level] = taxdat[, "uni2"]
+        taxdat[, "uni"] <- NULL
+        taxdat[, "uni2"] <- NULL
+        taxdat <- as(taxdat, "matrix")   
+        rownames(otudat) <- taxdat[rownames(taxdat) %in% rownames(otudat), taxa_level]
+        rownames(taxdat) <- taxdat[, taxa_level]
+        taxdat <- tax_table(taxdat)
+        taxa_names(physeq) <- taxa_names(taxdat)
+        tax_table(physeq) <- taxdat
+        otu_table(physeq) <- otudat
+        
+    }
+    else 
+    {
+        
+taxdat[, taxa_level] = taxdat[, "uni"]
 taxdat[, "uni"] <- NULL
-taxdat <- as.matrix(taxdat)   
+taxdat <- as(taxdat, "matrix")   
 rownames(otudat) <- taxdat[rownames(taxdat) %in% rownames(otudat), taxa_level]
 rownames(taxdat) <- taxdat[, taxa_level]
 taxdat <- tax_table(taxdat)
 taxa_names(physeq) <- taxa_names(taxdat)
 tax_table(physeq) <- taxdat
 otu_table(physeq) <- otudat
+           }
     
 } else {
     
@@ -490,9 +906,7 @@ tax_table(physeq) <- taxdat
 otu_table(physeq) <- otudat
     
 }
-#ps = phyloseq(otu_table(otudat, taxa_are_rows = T), tax_table(as.matrix(taxdat)), sample_data(physeq))
-
-    
+       
     
 #==========================================# 
 } else if (taxa_level == "Genus") {
@@ -504,20 +918,55 @@ otu_table(physeq) <- otudat
     otudat = otu_table(physeq)
     
 # take care of the uncultured genus
-taxdat[,6] = ifelse(taxdat[,6] %in% c("uncategorized", "uncultured", "unassigend"), 
-       paste0(taxdat[ , length(rank.names[1:which(rank.names=="Genus")])-1], "_", taxdat[,6]), paste(taxdat[,6]))
-
-  
-rownames(otudat) <- taxdat[rownames(taxdat) %in% rownames(otudat), taxa_level]
-rownames(taxdat) <- taxdat[taxdat[,taxa_level] %in% rownames(otudat), taxa_level]
-taxdat <- as.matrix(taxdat) 
-taxdat <- tax_table(taxdat)
-taxa_names(physeq) <- taxa_names(taxdat)
-tax_table(physeq) <- taxdat
-otu_table(physeq) <- otudat
-#ps = phyloseq(otu_table(otudat, taxa_are_rows = T), tax_table(as.matrix(taxdat)), sample_data(physeq))
- 
+taxdat[,6] = ifelse(taxdat[,6] %in% c("uncategorized", NA, "uncultured", "unassigend", "", " "),
+       paste0("[", taxdat[,length(rank.names[1:which(rank.names==taxa_level)])-1], "]", "_", taxdat[,taxa_level]), taxdat[,taxa_level])
     
+gen1 = taxdat[, taxa_level] %>% as.vector
+gen2  = taxdat[, taxa_level] %>% as.vector
+
+    uni  = matrix(NA, ncol = length(gen2), nrow = length(gen1))
+    for(i in seq_along(gen1)){
+        for(j in seq_along(gen2)){
+    uni[i, j] = ifelse(gen1[i] == gen2[j] , "TRUE", "FALSE")
+    }
+        }
+
+rownames(uni) <-gen1
+colnames(uni) <- gen2   
+uni[upper.tri(uni, diag = TRUE)] = 0 #get rid of diagonals and upper triangle
+
+duplis = uni %>% reshape2::melt() %>% filter(value == "TRUE")
+
+        if(dim(duplis)[[1]] > 0){#if there is not duplications, we can simply use the taxa names as the row name
+    
+        duplis = uni %>% reshape2::melt() %>% filter(value == "TRUE") %>% dplyr::select(1)%>% unique() %>% unlist %>% as.vector
+        taxdat = taxdat %>% mutate( uni= ifelse(taxdat[, taxa_level] %in% duplis, 
+                    paste0("[", taxdat[,length(rank.names[1:which(rank.names==taxa_level)])-1], "]", "_", taxdat[,taxa_level]), taxdat[,taxa_level]))
+    
+        taxdat[, taxa_level] = taxdat[, "uni"]
+        taxdat[, "uni"] <- NULL
+
+        taxdat <- as(taxdat, "matrix")
+ 
+        rownames(otudat) <- taxdat[rownames(taxdat) %in% rownames(otudat), taxa_level]
+        rownames(taxdat) <- taxdat[taxdat[,taxa_level] %in% rownames(otudat), taxa_level]
+        taxdat <- as.matrix(taxdat) 
+        taxdat <- tax_table(taxdat)
+        taxa_names(physeq) <- taxa_names(taxdat)
+        tax_table(physeq) <- taxdat
+        otu_table(physeq) <- otudat
+ 
+        } else {
+
+        taxdat <- as.matrix(taxdat) 
+        taxdat <- tax_table(taxdat)
+        rownames(otudat) <- taxdat[rownames(taxdat) %in% rownames(otudat), taxa_level]
+        rownames(taxdat) <- taxdat[, taxa_level]
+        taxdat <- tax_table(taxdat)
+        taxa_names(physeq) <- taxa_names(taxdat)
+        tax_table(physeq) <- taxdat
+        otu_table(physeq) <- otudat
+       }   
     
 } else {
     
@@ -546,7 +995,7 @@ duplis = uni %>% reshape2::melt() %>% filter(value == "TRUE")
 
 if(dim(duplis)[[1]] > 0){#if there is not duplications, we can simply use the taxa names as the row name
     
-    duplis = uni %>% reshape2::melt %>% filter(value == "TRUE") %>% dplyr::select(1)%>% unique() %>% unlist %>% as.vector
+    duplis = uni %>% reshape2::melt() %>% filter(value == "TRUE") %>% dplyr::select(1)%>% unique() %>% unlist %>% as.vector
 taxdat = taxdat %>% mutate( uni= ifelse(taxdat[, taxa_level] %in% duplis, 
                     paste(taxdat[,length(rank.names[1:which(rank.names==taxa_level)])-1], "_", taxdat[,taxa_level]), taxdat[,taxa_level]))
     
@@ -607,10 +1056,32 @@ scale_y_continuous(labels = function(x) format(x, scientific = TRUE))+#to print 
             theme(text = element_text(size =15, face = "bold"))
                    
 ggsave("./barplot_phylum_absolute.jpeg", device = "jpeg", dpi = 300, width = 7) 
+
+
+#Another way of making stacked bar plot is ps.melt
+
+trans.ps3 <- psmelt(glom.phyl) %>% 
+dplyr::select(Abundance, treatment, 
+Phylum, Sample) %>% group_by(Phylum, treatment) %>%
+summarise(abs.count = sum(Abundance), .groups = "drop") 
+
+trans.ps3 %>% 
+ggplot(aes(x= treatment, y = abs.count, fill = Phylum)) + 
+  geom_bar(stat = "identity",
+           position = "stack", color = "black") +
+  theme_bw() + 
+  ylab("Absoulute abundance of different phyla") + 
+  xlab("")+
+  scale_fill_manual(values = cols[rownames(cols) %in% trans.ps3$Phylum,2])+
+  ggtitle("Phylum")+ 
+  theme(axis.text.x = element_text(face = "bold", size =12), 
+  text = element_text(size = 15, face = "bold")) +
+  scale_y_continuous(n.breaks = 6) 
 ```
  
 ![alt text](https://github.com/farhadm1990/Microbiome_analysis/blob/main/Pix/barplot_phylum_absolute.jpeg) 
  > Figure 7. Stacked barplot for different phyla in 4 treatment groups.
+
 
 #
 
@@ -623,7 +1094,7 @@ library(eulerr)
 library(gplots)
 library(VennDiagram)
 
-spec.pst <- gloomer(pst.qPCR, taxa_level = "Species", NArm = TRUE)
+spec.pst <- gloomer(ps, taxa_level = "Species", NArm = TRUE)
 
 #making a subset of dataset for different treatments
 ct.ps <- subset_samples(spec.pst, treatment == "CT")
@@ -660,7 +1131,7 @@ ggsave(plot = ven.diag, "./venn.taxa.species.jpeg", device = "jpeg", dpi = 500)
 
 ```R
 #Phylum level
-phyl.pst <- gloomer(pst.qPCR, taxa_level = "Phylum", NArm = TRUE)
+phyl.pst <- gloomer(ps, taxa_level = "Phylum", NArm = TRUE)
 
 #making a dataset for different treatments
 ct.ps <- subset_samples(phyl.pst, treatment == "CT")
@@ -692,132 +1163,11 @@ ggsave(plot = ven.diag, "./venn.taxa.phylum.jpeg", device = "jpeg", dpi = 500)
 ![venn_diagram](https://github.com/farhadm1990/Microbiome_analysis/blob/main/Pix/venn.taxa.phylum.jpeg)
 > Figure 9. Venn diagram of shared phylum between treatments.
 
-
-# 
-
-## 4. Statistical analysis on alpha diversity metrics: Generalized Linear Mixed Effect Model (GLMEM)
-
-This experiment was done in a 3 complete blocks with a `2 x 2` factorial design for the treatment arrangement on 23 6-week old piglets. In each block/round, we have used 2 litters (sow from which we got the piglets). After `19` days of experiemnt, piglets were sacrificed and digesta samples were taken from their proximal and distal colon and feces. In each round of experiment (n = 3), there were `4` pens in which 2 pigs were housed.
+## Estimating beta diversity
+### To estimate beta diversity, it is advisable to `log` transform your data to account for the zero inflation. We can also use variance-stablizing transformed data.
 
 ```R
-
-#Loading required packages
-library(nlme)
-library(lme4)
-library(lmerTest)
-library(car)
-library(lsmeans)
-library(postHoc)
-library(multcomp)
-
-# Creating a data frame from the metadata.
-alpha.qpcr = sample_data(pst.qPCR) %>% data.frame
-
-# Inspecting the distribution of alpha metrics
-
-alpha.qpcr$Chao1 %>% hist(main = "Chao")
-alpha.qpcr$Shannon  %>% hist(main = "Shannon")
-alpha.qpcr$FaithPD %>% hist(main = "FaithPD")
-
-# Checking the experiment desing and rank efficiency of variables
-xtabs(~ gb + dss + litter +  Pen, exp.test)
-
-# Fitting the data to a GLMEM by glmer function with Gamma distribution and log link. We can use the optimizer control = glmerControl(optimizer = c("bobyqa", "bobyqa")) to fix convergance issue, if there was any.
-faith.lm = glmer(FaithPD ~ gb * dss + sample_type + blok  + (1|litter) + (1|pig_no), 
-            data = alpha.qpcr, family = Gamma(link = "log")) # Full model
-            
-faith.red = glmer(FaithPD ~ gb * dss   + (1|litter) + (1|pig_no), 
-            data = alpha.qpcr, family = Gamma(link = "log")) # Reduced model
-anova(faith.lm, faith.red)                                   # Checking for differences in the models after reduction
-
-car::Anova(faith.red, type = 2) #A qi-square test. if the interaction is not significant use the default type 2 and otherwise type 3 (reports the intercept). 
-
-faith.pairs = pairs(emmeans(faith.lm, ~ gb + dss), type = "response", adjust = "BH") %>% cld(Letters = letters) # Extracting responses and their pairwise comparison. Type="response" can give you a back transformed pair-wise comparision of EMMs. 
-
-#contrast(emmeans(chao.red, ~ gb * dss), adjust = "BH", type = "response", interaction =  T)
-
-cld(emmeans(faith.lm, ~ gb + dss, adjust = "BH",  type = "response"),Letters = letters) 
-#summary(emmeans(chao.red, ~ gb + dss, adjust = "BH",  type = "response"))
-
-```
-
-Now you can extract the parwise comparisons from the model to be used for figure annotations.
-
-```R
-#extracted pairwise comparisons from the model
-
-chao.pairs = chao.pairs %>% as.data.frame %>% rownames_to_column("order") %>% arrange(order)
-shannon.pairs = shan.pairs %>% as.data.frame %>% rownames_to_column("order") %>% arrange(order)
-faith.pairs = faith.pairs %>% as.data.frame %>% rownames_to_column("order") %>% arrange(order)
-
-
-#creating df for the manual pvalue
-chao.stat = chao.pairs %>% mutate(group1 = factor(c("CT", "CT", "CT", "GB", "GB", "DSS"), levels = c("CT", "GB", "DSS") ), 
-                       group2 = factor( c("GB", "DSS", "GBDSS", "DSS", "GBDSS", "GBDSS"), levels = c("GB", "DSS", "GBDSS" )),
-                       p =ifelse(chao.pairs$p.value < 0.06 & chao.pairs$p.value > 0.01 , "*", 
-                           ifelse(chao.pairs$p.value < 0.01 &  chao.pairs$p.value > 0.001, "**",
-                           ifelse(chao.pairs$p.value < 0.001 , "***", "ns")))) %>% as_tibble
-
-shannon.stat =  shannon.pairs %>% mutate(group1 = factor(c("CT", "CT", "CT", "GB", "GB", "DSS"), levels = c("CT", "GB", "DSS") ), 
-                       group2 = factor( c("GB", "DSS", "GBDSS", "DSS", "GBDSS", "GBDSS"), levels = c("GB", "DSS", "GBDSS" )),
-                       p =ifelse(shannon.pairs$p.value < 0.06 & shannon.pairs$p.value > 0.01 , "*", 
-                           ifelse(shannon.pairs$p.value < 0.01 &  shannon.pairs$p.value > 0.001, "**",
-                           ifelse(shannon.pairs$p.value < 0.001 , "***", "ns")))) %>% as_tibble
-
-faith.stat =  faith.pairs %>% mutate(group1 = factor(c("CT", "CT", "CT", "GB", "GB", "DSS"), levels = c("CT", "GB", "DSS") ), 
-                       group2 = factor( c("GB", "DSS", "GBDSS", "DSS", "GBDSS", "GBDSS"), levels = c("GB", "DSS", "GBDSS" )),
-                       p =ifelse(faith.pairs$p.value < 0.06 & faith.pairs$p.value > 0.01 , "*", 
-                           ifelse(faith.pairs$p.value < 0.01 &  faith.pairs$p.value > 0.001, "**",
-                           ifelse(faith.pairs$p.value < 0.001 , "***", "ns")))) %>% as_tibble
-```
-
-Making a violin plot for FaithPD, as an example, with pairwise comparisons between treatments. 
-
- 
-
-```R
-library(ggpubr)
-
-#Creating a long dataframe
-long_mtdat = long_data[long_data$variable %in% c("FaithPD"),]
-
-ggboxplot(long_mtdat, x = "treatment", y = "value", width = 0, facet.by = "variable") +
-geom_violin( aes(fill = treatment), alpha=0.7, trim = FALSE)+ 
-geom_boxplot(width =0.15, outlier.color = NA)+ stat_pvalue_manual( data = faith.stat, y.position = 35.8,
-xmin = "group1", xmax = "group2", step.increase =0.1, label = "p")  +
-geom_jitter(aes(color = treatment), alpha = 0.4, size = 2, show.legend = F) +
-scale_fill_manual(values = c("deeppink1", "deepskyblue", "darkorange",  "springgreen4"))+ 
-scale_color_manual(values = c("deeppink1", "deepskyblue", "darkorange",  "springgreen4"))+
-labs(fill= "Treatment", title = "Violin plot of FaithPD based on absolute counts", y = "Alpha diversity",
-x = "Treatment") + theme_bw() + 
-theme(text = element_text(size =11, face = "bold"))
-
-ggsave(filename = "./alpha_dss_abs_faith.jpeg", device = "jpeg", dpi = 300, width = 5)
-```
-![alt text](https://github.com/farhadm1990/Microbiome_analysis/blob/main/Pix/alpha_dss_abs_faith.jpeg)
-> Figure 10. Violin plot of FaithPD metric for four treatments. Pairwise comparisons were adjusted by BH at P < 0.5.
-
-#
-
-## 5. Beta diversity: diversity between samples
-
-Before measuring beta diveristy, it is worth to know that unlike alpha diversity which deals with differences of diversity within samples, beta diversity accounts for diversity and differences in community between groups of samples. In this chapter we `phyloseq` and `vegan` packages. There are different beta diversity metrics such as Jaccard index, Bray-Curtis dissimilarity or UniFrac distance.  
-
-#### The Jaccard distance: 
-To calculate the Jaccard index, we take the intersection (the number of species present in both samples) and divide this 
-by the total number of species, or their union. 
-
-#### Bray-Curtis dissimilarity:
-Bray-courtis, unlike the Jaccard (only taking presence absence into account), accounts for the number of features in each groups (evenness). Therefore, it is to say that Bray-curtis is the beta equivalent of Shannon in alpha. To measure Breay-Curtis dissimilarity matrix, we first look at the abundances, or the total counts, of species shared between the two samples. Next, we take the smallest value for each of the shared species. We add all these smallest values and multiply it by two. Next, we divide this by the sum of the values in both samples. This dissimilarity matrix has range of 0 (similar) to 1 (dissimilar).
-
-#### UniFrac Phylogenetic Distance
-The UniFrac distance does not use species directly. Instead, it works with a phylogenetic tree. The phylogenetic tree is made from differences between genes. Species on branches close together in the tree have more similar genes. Instead of counting species present in both samples, we sum the lengths of branches that are not shared and divide them by the sum of all branch lengths (unweighted UniFrac) and if you multiply the branch lenghts to the abundance of taxa it will be called weighted UniFrac.
-
-
-To estimate beta diversity, it is advisable to `log` transform your data to account for the zero inflation. Here we literaly add a psodocount to the zero counts as log of zero is undefined.
-
-```R
-pst.qPCR.log <- transform_sample_counts(pst.qPCR, function(x) log(1+x))
+ps.log <- transform_sample_counts(ps, function(x) {log(1+x})
 
 ```
 
@@ -828,50 +1178,89 @@ dist_methods <- unlist(distanceMethodList)
 print(dist_methods)
 ```
 
-You can create a metric distance scaling (MDS) also termed as Principal Coordinate Analysis (PCoA) or non-metric dimentional scaling (NMDS) plots to visualize beta diversity of your bacterial data on reduced dimentional plots. In this example we only do that for Weighted UniFrac Phylogenetic Distance by `ordinate` function from phyloseq package.
+You can create a metric distance scaling (MDS) also termed as Principal Coordinate Analysis (PCoA) or non-metric multidimentional scaling (NMDS) plots to visualize beta diversity of your bacterial data on reduced dimentional plots. In this example we only do that for Weighted UniFrac Phylogenetic Distance by `ordinate` function from phyloseq package.
 
 ```R
-#Weighted UniFrac: based on log-transformed data 
+#Bray PCoA
+bray.pcoa = ordinate(ps.vst , method="PCoA", distance = "bray")
+evals<-bray.pcoa$values$Eigenvalues
 
-#Wunifrac PCoA
-wunifrac.pcoa = ordinate(pst.qPCR.log, method = "PCoA", distance = "wunifrac")
-evals<-wunifrac.pcoa$values$Eigenvalues
 
-wunifrac.pcoa.log = plot_ordination(pst.qPCR.log, wunifrac.pcoa, color="treatment", shape= "sample_type", 
-   title = "PCoA plot of log Weighted UniFrac")+
-   labs(col="Treatment", shape = "Segment")+
-   coord_fixed(sqrt(evals[2]/evals[1]))+  #+stat_ellipse() you could also add ellipse to your clusters.
-   labs(x = sprintf("PCoA1 [%s%%]", round(evals/sum(evals)*100,1)[1]),
-   y = sprintf("PCoA2 [%s%%]", round(evals/sum(evals)*100, 2)[2])) +
-   scale_color_manual(values = c("deeppink1", "deepskyblue", "darkorange",  "springgreen4")) + 
-   theme_classic() + geom_vline(xintercept = 0, lty = 2, alpha=0.5) + 
-   geom_hline(yintercept = 0, lty = 2, alpha =0.5)  + geom_point(size = 4) +coord_fixed()+
-   scale_y_continuous(limits = c(-0.12, 0.15)) + scale_x_continuous(limits = c(-0.15, 0.21)) +  theme_bw() +
-   theme(text = element_text(size = 15, face = "bold"))
-wunifrac.pcoa.log
+bray.pcoa.p = plot_ordination(ps.vst , axes =  c(1, 2), 
+bray.pcoa, color="treatment", shape= "sample_type", 
+title = "Bray-Curtis PCoA plot, vst data")+ 
+geom_point(size = 5) + 
+geom_vline( xintercept = 0, lty = 2, 
+color = alpha("black", alpha = 0.5))+ 
+geom_hline(yintercept = 0, lty = 2, color = alpha(col = "black", 0.5)) +
+  labs(col="Treatment", shape = "Sample type")+
+  coord_fixed(sqrt(evals[2]/evals[1]))+#+stat_ellipse()
+  labs(x = sprintf("PCoA1 [%s%%]", round(evals/sum(evals)*100,1)[1]),
+       y = sprintf("PCoA2 [%s%%]", round(evals/sum(evals)*100, 2)[2])) +
+scale_color_manual(values = c("deeppink1", "deepskyblue", "darkorange",  "springgreen4"))+
+theme_bw()
+
+#Bray NMDS
+bray.nmds=ordinate(ps.log, method="NMDS", distance = "bray")
+bray.stress = stressplot(bray.nmds)#in this dataset, R squared shows that the nMDS is perfectly able to capture variation in the data.
+plot(bray.nmds)#the red points are Transformed taxon-wise dissimilarities and the circles are Transformed sample-wise dissimilarities.
+
+plot_ordination(ps.log, bray.nmds, color="treatment", 
+shape= "sample_type", title = "Bray-Curtis NMDS plot, log transformed")+
+geom_point(size = 6) + coord_fixed()+
+geom_vline( xintercept = 0, lty = 2, 
+color = alpha("black", alpha = 0.5))+ 
+geom_hline(yintercept = 0, lty = 2, color = alpha(col = "black", 0.5))+
+labs(col="Treatment", shape = "Sample type") + theme_bw() +
+scale_color_manual(values = c("deeppink1", "deepskyblue", "darkorange",  "springgreen4"))
+
+ggplot2::ggsave(plot = wunifrac.nmds.p, filename = "./Outputs/Ordinations/bray.nmds.logtransformed.jpeg",
+ device = "jpeg", dpi= 300, width = 9, height = 6)
+#wunifrac pcoa 
+new_tree <- ape::multi2di(phy_tree(ps.vst))#there was an error in wunifrac calculation, we correct the tree
+phy_tree(ps.vst) <- phy_tree(new_tree)
+phy_tree(ps) <- phy_tree(new_tree)
+
+wuni.pcoa = ordinate(ps.vst, method = "PCoA", distance = "wunifrac")
+evals<-wuni.pcoa$values$Eigenvalues
+
+wunifrac.pcoa = plot_ordination(ps.vst, wuni.pcoa, color="treatment", 
+shape= "sample_type", title = "Weighted UniFrac distance PCoA plot")+
+   labs(col="Treatment", shape = "Sample type")+ geom_point(size = 6) + 
+geom_vline( xintercept = 0, lty = 2, 
+color = alpha("black", alpha = 0.5))+ 
+geom_hline(yintercept = 0, lty = 2, color = alpha(col = "black", 0.5))+
+  coord_fixed(sqrt(evals[2]/evals[1]))+#+stat_ellipse()
+  labs(x = sprintf("PCoA1 [%s%%]", round(evals/sum(evals)*100,1)[1]),
+       y = sprintf("PCoA2 [%s%%]", round(evals/sum(evals)*100, 2)[2])) +
+scale_color_manual(values = c("deeppink1", "deepskyblue", "darkorange",  
+"springgreen4")) + theme_bw()
+
+#wunifrac nmds
+ps.log <- transform_sample_counts(ps, function(x) log(x+1))
+
+wunifrac.nmds=ordinate(ps.log, method="NMDS", distance = "wunifrac")
+wunifrac.stress = stressplot(wunifrac.nmds)#in this dataset, R squared shows that the nMDS is perfectly able to capture variation in the data.
+plot(wunifrac.nmds)
+
+wunifrac.nmds.p = plot_ordination(ps.log, wunifrac.nmds, color="treatment", 
+shape= "sample_type", title = "WUNFRAC NMDS plot, log transformed")+
+geom_point(size = 6) + 
+geom_vline( xintercept = 0, lty = 2, 
+color = alpha("black", alpha = 0.5))+ 
+geom_hline(yintercept = 0, lty = 2, color = alpha(col = "black", 0.5))+
+labs(col="Treatment", shape = "Segment") + theme_bw() +
+scale_color_manual(values = c("deeppink1", "deepskyblue", "darkorange",  "springgreen4"))
+
+
+ggplot2::ggsave(plot = wunifrac.nmds.p, filename = "./Outputs/Ordinations/wunifrac.nmds.logtransformed.jpeg",
+ device = "jpeg", dpi= 300, width = 8, height = 6)
 ```
 ![(wunifrac.pcoa.log)](https://github.com/farhadm1990/Microbiome_analysis/blob/main/Pix/wunifrac.pcoa.log.jpeg)
 > Figure 11. PCoA plot for weighted UniFrac distance. Each point represents one sample with different colors correspondent to treatments and the segment/sample type as the shape for the points. 
 
-```R
-#Wunifrac NMDS
-wunifrac.nmds.log=ordinate(pst.qPCR.log, method="NMDS", distance = "wunifrac")
-wunifrac.stress = stressplot(wunifrac.nmds.log)#in this dataset, R squared shows that the nMDS is perfectly able to capture variation in the data.
-# plot(wunifrac.nmds.log)#the red points are Transformed taxon-wise dissimilarities and the circles are Transformed sample-wise dissimilarities.
-
-wunifrac.nmds.log = plot_ordination(pst.qPCR.log, wunifrac.nmds.log, color="treatment", shape= "sample_type", 
-  title = "Weighted UniFrac distance NMDS plot of log data")+
-  labs(col="Treatment", shape = "Segment")+
-  scale_color_manual(values = c("deeppink1", "deepskyblue", "darkorange",  "springgreen4")) +
-  theme_bw() + geom_vline(xintercept = 0, lty = 2, alpha=0.5) + 
-  geom_hline(yintercept = 0, lty = 2, alpha =0.5)+scale_x_continuous(limits = c(-0.15, 0.25)) + 
-  scale_y_continuous(limits = c(-0.1, 0.1)) + theme(text = element_text(size = 15, face = "bold")) + geom_point(size =4)+
-  coord_fixed()
-wunifrac.nmds.log 
-```
 ![stress plot](https://github.com/farhadm1990/Microbiome_analysis/blob/main/Pix/stress%20plot%20of%20Wnweighted%20UniFrac%20distance%20for%20NMDS%20plot%20with%20log%20transformation.jpeg)
 > Figure 12. Stress plot for NMDS of weighted UniFrac. R squares shows how well the NMDS captures variation in the data, hence the higher the better. 
-
 
 ![alt text](https://github.com/farhadm1990/Microbiome_analysis/blob/main/Pix/wunifrac.nmds.logtransformed.jpeg)
 > Figure 13. NMDS plot for weighted UniFrac distance. Each point represents one sample with different colors correspondent to treatments and the segment/sample type as the shape for the points. 
@@ -884,28 +1273,23 @@ You can also create a #graph or #network for understaning the similairty/dissimi
 library("phyloseqGraphTest")
 library("igraph")
 library("ggnetwork")
-
-# Creating the based on Bray-Curtis dissimaliry matrix
-
-gt = graph_perm_test(pst.qPCR, "treatment",
+library("gridExtra")
+gt = graph_perm_test(ps.vst,  sampletype = "treatment",
                     distance = "bray", type = "mst")
 gt$pval
 
-# Graph 
-
 plotNet = plot_test_network(gt) + theme(legend.text = element_text(size = 8),
-        legend.title = element_text("Network based analysis of treatments based on\n Bray-Curtis, P = 0.002", size = 9)) + 
+        legend.title = element_text("Network analysis of treatments based on\n Bray-Curtis, P = 0.002", size = 9))+
 labs(col = "Treatment") + geom_nodes(aes(color = sampletype), inherit.aes = T, size = 5) + 
 scale_color_manual(values = c("deeppink1", "darkorange", "deepskyblue",   "springgreen4"))
 
-#Permutaion test histogram
-plotPerm1 = plot_permutations(gt) + theme_bw() + geom_text(label = glue("{gt$pval}"), aes(x = 55, y = 10), color = "red")
+plotPerm1 = plot_permutations(gt) + theme_bw() + geom_text(label = "P < 0.01", aes(x = 55, y = 10), color = "red")
 
-#Patching two plots together
 net.treat = grid.arrange(ncol = 2, plotNet, plotPerm1) 
 
-ggsave(filename =  "./Network/treatment.net.bray_pval0.002.jpeg", net.treat, dpi = 300, device = "jpeg", width = 12, height = 10)
+ggsave(filename =  "./Outputs/Network analysis/treatment.net.bray_pval0.002.jpeg", net.treat, dpi = 300, device = "jpeg", width = 12, height = 10)
 
+#we can obviously see that the samples group by treatment more than we would expect by chance.
 ```
 
 ![graph_bray](https://github.com/farhadm1990/Microbiome_analysis/blob/main/Pix/treatment.net.bray_pval0.002.jpeg)
@@ -919,25 +1303,45 @@ ggsave(filename =  "./Network/treatment.net.bray_pval0.002.jpeg", net.treat, dpi
 In the prevoius section, we showed how to visualized differences between samples belonging to different treatments in diversity of microbiota.
 First we create a distance matrix by either `vdist` from `vegan` package or by `distance` from `phyloseq` pakcage. 
 ```R
-##WUniFrac log
-wunifrac.dist.qpcr.log = phyloseq::distance(pst.qPCR.log, method = "wunifrac")#weighted unifrac distance on log-transformed qpcr data dataset
+
+bray.dist = phyloseq::distance(ps.vst, method = "bray")
+wun.dist= phyloseq::distance(ps.vst, method = "wunifrac")
+
+bray.dist.log = phyloseq::distance(ps.log, method = "bray")
+wun.dist.log= phyloseq::distance(ps.log, method = "wunifrac")
+
+pig.red <- c("p30", "p37", "p40")
+ps.red <- subset_samples(ps.vst, !pig_no %in% pig.red)
+
+ps.log.red <- subset_samples(ps.log, !pig_no %in% pig.red)
+
+bray.dist.red = phyloseq::distance(ps.red , method = "bray")
+wun.dist.red = phyloseq::distance(ps.red , method = "wunifrac") 
+
+bray.dist.log.red = phyloseq::distance(ps.log.red , method = "bray")
+wun.dist.log.red = phyloseq::distance(ps.log.red , method = "wunifrac")
 ```
 
 Then we test to see if the disperssion of the variance around the treatment centroids are homogenous (variance homogeniety test) by `betadisper` function from `vegan` package. If the p-value of test statistic is significant, it means that there is a significant difference in variance for any of the tested levels and the results from your `dbrda` model will not be reliable.
 
 ```R
+f = data.frame(sample_data(ps.log.red ))
+
 set.seed(10)
 
 # Making a permutational iteration to be passed on later
-h <- with(data = data.frame(sample_data(pst.qPCR.log)), how(blocks = litter, nperm = 9999))
-wunifrac.disp <- vegan::betadisper(wunifrac.dist.qpcr.log, group = sample_data(pst.qPCR.log)$treatment, 
+h_pig <- with(data = df,
+  how(within = Within(type = "none"),
+  plots = Plots(strata = pig_no, type = "free"),
+    blocks = litter, nperm = 999))
+permute::check(df, control = h_pig)#to check if the permutation plan is okay, e.g. balanced or not. and also the nr. of possible permutations
+
+bray.disp.red <- vegan::betadisper(bray.dist.log.red, group = df$treatment, 
                                  type = "centroid")
 # Permutational test for analysis of variance with pairwise comparison.
-permutest(wunifrac.disp, permutation =h, pairwise = T)
+perm.disp <- vegan::permutest(bray.disp.red , permutation =h_pig, pairwise = T)
+p.disp = perm.disp$tab$'Pr(>F)'[[1]]
 ```
-![image](https://user-images.githubusercontent.com/70701452/173353892-f8c2a473-792a-4cd2-833c-aeb4350e03d2.png)
-> Figure 15. Test statistics for variance homogeniety test. Betadisper test statistics are not significant, meaning that we can accept the null hypothesis that our groups have the same dispersions of variance. This means we can be confident that our adonis/dbrda result is maninly due to biological differences due to the treatment effect rather than differences in variance dispersions.
-
 
 You can plot and save the PCoA of beta dispersion test:
 ```R
@@ -946,100 +1350,249 @@ for(i in dev.list()[1]:dev.list()[length(dev.list())]){
    dev.off()
     }
 
-jpeg( "./Beta diversity/dispersion of variance_wunifrac.jpeg", quality = 100)
+library(glue)
 
-plot(wunifrac.disp, col = c("deeppink1", "deepskyblue", "darkorange",  "springgreen4"), bty = "n",
-  las = 1, main = "Dispersion of variance around the centroids, WUniFrac", sub=NULL,
-  xlab = sprintf("PCo1 [%s%%]", round(eig.vals/sum(eig.vals)*100,0)[1]),
- ylab = sprintf("PCo2 [%s%%]", round(eig.vals/sum(eig.vals)*100,1)[2])); text(glue("P > {round(p.val.perm, 2)}"), 
-                                                               x = 0.15, y = -0.12, cex = 1.5, col = "red")
+jpeg("./Outputs/Ordinations/dispersion of variance_bray_log.jpeg",  units = "cm",
+res = 200, height = 15, width = 20)
+
+plot(bray.disp.red, col = c("deeppink1", "deepskyblue", "darkorange",  "springgreen4"),
+bty = "n", las = 1, main = "Dispersion of variance around the centroids, Bray log", sub=NULL,
+  xlab = sprintf("PCo1 [%s%%]", round(bray.disp.red$eig[1]/sum(bray.disp.red$eig)*100)),
+ ylab = sprintf("PCo2 [%s%%]", round(bray.disp.red$eig[2]/sum(bray.disp.red$eig)*100)));text(glue("P = {round(p.disp, 2)}"), 
+ x = 0.35, y = -0.2, cex = 1.5, col = "red")
+
+dev.off()
+
+rm(bray.disp.red, perm.disp, p.disp)
 ```
 
-![beta.disper.pcoa](https://github.com/farhadm1990/Microbiome_analysis/blob/main/Pix/dispersion%20of%20variance_wunifrac.jpeg)
-> Figure 16. PCoA of variance homogeniety test around the centroids for different treatments. In significant test statistic shows indicates a homogenous variance dispersion for all centroids.
+![image](https://github.com/farhadm1990/Microbiota-analysis/blob/main/Pix/dispersion%20of%20variance_bray_log.jpeg)
+> Figure 15. PCoA of variance homogeniety test around the centroids for different treatments. In significant test statistic shows indicates a homogenous variance dispersion for all centroids. Betadisper test statistics are not significant, meaning that we can accept the null hypothesis that our groups have the same dispersions of variance. This means we can be confident that our adonis/dbrda result is maninly due to biological differences excerted by the treatment effect rather than differences in variance dispersions.
+
+
+
 
 #
 ### Distance-based Redundancy Analysis (dbRDA)
 Distance-based Redundancy Analysis (dbRDA) is a Redundancy Analysis on the eigenvalue-scaled result of Principal Coordinates Analysis. This is a method for carrying out constrained ordinations on data using non-Euclidean distance measures, with the assumption of liniear relationship between response and environmental variables ([this is not the case especially in ecological data](https://sites.ualberta.ca/~ahamann/teaching/graphics/LabRDA.pdf)). The usual methods for constrained ordinations (CCA, RDA) use Euclidean distance, but this does not work for all data, such as community count data, e.g. wunweighted UniFrac distance. 
 
 ```R
+## dbrda: for sampe_type effect: here we allow shuffling observations coming from animals, e.g. sample type the by passing on 'Within(type = "free")' and fix the animals by passing 'type = "none"' for plot.
+
+df = data.frame(sample_data(ps.log.red))
+
 set.seed(1990)
-h <- with(data = data.frame(sample_data(pst.qPCR.log)), how(blocks = litter, nperm = 9999))
+h <- with(data = df, 
+          how(within = Within(type = "free"),
+            plots = Plots(strata = pig_no, type = "none"), 
+              blocks = litter, nperm = 999))
 
-db.rda.wunifrac = vegan::dbrda(wunifrac.dist.qpcr.log ~  gb * dss, Condition(litter), data = sample_data(pst.qPCR.log)%>%data.frame)    #Full model
-db.rda.wunifrac.gb = vegan::dbrda(wunifrac.dist.qpcr.log ~  gb, Condition(litter + dss), data = sample_data(pst.qPCR.log)%>%data.frame) #GB overall effect, dss effect as denominator to be removed from permutation
-db.rda.wunifrac.dss = vegan::dbrda(wunifrac.dist.qpcr.log ~ dss, Condition(litter + gb), data = sample_data(pst.qPCR.log)%>%data.frame) #DSS overall effect, dss effect as denominator to be removed from permutation
-db.rda.wunifrac #Treatments explained 39% of variance
-db.rda.wunifrac.gb #GB explained 5% of variance
- db.rda.wunifrac.dss #dbRDA does not do any permutation test #DSS explained 31% of variance
+dbrda.bray.red = vegan::dbrda(bray.dist.log.red~ sample_type  + Condition(litter+ gb * dss), 
+                               data = df)    #Full model
+anova(dbrda.bray.red, permutations = h, by = "margin")
 
-#But it is anova that does the permutations in order to generate the psudo-F statistics. 
-vegan::anova.cca(db.rda.wunifrac, permutations = h, by = "term")
-vegan::anova.cca(db.rda.wunifrac.gb, permutations = h, by = "term")
-anova.cca(db.rda.wunifrac.dss, permutations = h, by = "term")
-#inertia is the squared wunifrac distance here
+rm(dbrda.bray.red, df)
+```
 
-db.rda.wunifrac 
+## Whole plot variable and main effects
+```R
+df = data.frame(sample_data(ps.red)) 
+
+h_whole <- with(data = df, 
+                how(within = Within(type = "none"),
+                  plots = Plots(strata = pig_no, type = "free"), 
+                    blocks = litter, nperm = 999))
+check(df, h_whole)
+
+db.whole = dbrda(bray.dist.red ~ gb + dss + gb:dss + Condition(litter + sample_type),
+                 data = df)
+set.seed(42)
+anova(db.whole, permutations = h_whole) #omnibus permutation
+
+
+db.whole.main = dbrda(bray.dist.red  ~ gb + Condition(litter + sample_type + dss),
+                 data = df)
+set.seed(23)
+anova(db.whole.main, by = "margin", permutations = h_whole)
+
+db.whole.main = dbrda(bray.dist.red ~ dss + Condition(litter + sample_type + gb),
+                 data = df)
+set.seed(23)
+anova(db.whole.main, by = "margin", permutations = h_whole)
+
+db.whole.margin = dbrda(bray.dist.red ~ gb:dss + Condition(litter + sample_type),
+                 data = df)
+                 
+set.seed(23)
+anova(db.whole.margin, by = "margin", permutations = h_whole)
+
+rm(db.whole.main, db.whole.margin)
+
+```
+
+## Plotting from model scores
+```R
+
+# Extreacting the goodies :)
+score.site = vegan::scores(db.whole, display = "sites") %>% as.data.frame
+score.centroid = vegan::scores(db.whole, display = "cn") %>% as.data.frame
+rownames(score.centroid) <- levels(sample_data(ps.red)$treatment)
+
+eig.vals = db.whole$CCA$eig
+inertia.total = db.whole$tot.chi #Total variation (inertia) explained. This number should be used as the denominator for measuring the amount of variance out of totoal variance wxplained by each dbrda axis.
+
+#Ordination Plot
+score.site %>% ggplot(aes(dbRDA1, dbRDA2, shape = df$sample_type, 
+                          color = df$treatment)) +
+geom_point(size =7) + geom_hline(yintercept = 0, lty = 2, alpha =0.5) + 
+geom_vline(xintercept = 0, lty = 2, alpha = 0.5)+
+coord_fixed() + 
+scale_color_manual(values = c("deeppink1", "deepskyblue", 
+"darkorange",  "springgreen4")) + 
+theme_bw() + 
+scale_y_continuous(na.value = c(-2, 3), n.breaks = 10) +
+scale_x_continuous(na.value = c(-1, 1), n.breaks = 10) + 
+labs(col="Treatment", shape = "Segment") + 
+xlab(label = paste("dbRDA1 [", round(eig.vals[[1]]/sum(eig.vals)*100, 1), 
+                    "% of fitted and", 
+                    round(eig.vals[[1]]/inertia.total*100, 1), 
+                    "% of total variation]")) + 
+ylab(label = paste("dbRDA2 [", round(eig.vals[[2]]/sum(eig.vals)*100, 1), 
+"% of fitted and", round(eig.vals[[2]]/inertia.total*100, 1), 
+"of total variation]")) + 
+theme(axis.title = element_text(size = 15), 
+text = element_text(size = 13, face = "bold"),
+    axis.text.x =element_text(size =10, face = "bold"),
+axis.text.y =element_text(size =10, face = "bold")) + 
+ggtitle(label = "dbRDA plot of scores for sample, bray")  + 
+stat_ellipse(data = score.site, aes(dbRDA1, dbRDA2,fill = df$treatment), show.legend = F, inherit.aes = F, alpha = 0.2, position = "jitter", type = "euclid", color = "black", linetype = 3,  geom = "polygon", level = 0.30, segments = 51 ) + 
+scale_fill_manual(values = c("deeppink1", "deepskyblue", 
+"darkorange",  "springgreen4"))
+
+ggsave("./Outputs/Ordinations/bray.dbRDA.scores.site.jpeg", height = 8, width = 9, dpi =300)
+
+rm(db.whole, db.whole.main, db.whole.margin, score.site, eig.vals, inertia.total)
+```
+
+## Now we try rda without distance and use the normalized counts as the input
+```R
+count.tab <- ps.red@otu_table %>% as.matrix() %>% t()
+
+df <- ps.red@sam_data %>% data.frame()
+set.seed(1990)
+h <- with(data = df, 
+          how(within = Within(type = "free"),
+            plots = Plots(strata = pig_no, type = "none"), 
+              blocks = litter, nperm = 999))
+check(df, h)
+rda.samptype = vegan::rda(count.tab ~ sample_type  + Condition(litter+ gb * dss), 
+                               data = df)    #Full model
+anova(rda.samptype, permutations = h, by = "margin")
+
+rm(rda.samptype)
+```
+
+## Whole plot variable: for non distance, count data
+```R
+
+h_whole <- with(data = df, 
+                how(within = Within(type = "none"),
+                  plots = Plots(strata = pig_no, type = "free"), 
+                    blocks = litter, nperm = 999))
+check(df, h_whole)
+
+rda.whole = rda(count.tab ~ gb + dss + gb:dss + Condition(litter + sample_type),
+                 data = df)
+set.seed(42)
+anova(rda.whole, by = "term", permutations = h_whole)
+anova(rda.whole, by = "margin", permutations = h_whole)
+
+#for main effect of gb
+rda.whole.main = rda(count.tab ~ gb + Condition(litter + sample_type + dss),
+                 data = df)
+set.seed(23)
+anova(rda.whole.main, by = "margin", permutations = h_whole)
+
+#for main effect of dss
+rda.whole.main = rda(count.tab ~ dss + Condition(litter + sample_type + gb),
+                 data = df)
+set.seed(23)
+anova(rda.whole.main, by = "margin", permutations = h_whole)
+
+#interaction
+rda.whole.margin = rda(count.tab ~ gb:dss + Condition(litter + sample_type),
+                 data = df)
+                 
+set.seed(23)
+anova(rda.whole.margin, by = "margin", permutations = h_whole)
+
+```
+## Extreacting the goodies from dbRDA model for plotting :)
+```R
+
+score.site = vegan::scores(rda.whole, display = "sites") %>% as.data.frame
+score.centroid = vegan::scores(rda.whole, display = "cn") %>% as.data.frame
+#rownames(score.centroid) <- levels(df$treatment)
+
+eig.vals = rda.whole$CCA$eig
+inertia.total = rda.whole$tot.chi #Total variation (inertia) explained. This number should be used as the denominator for measuring the amount of variance out of totoal variance wxplained by each dbrda axis.
+
+#Ordination Plot
+score.site %>% ggplot(aes(RDA1, RDA2, shape = df$sample_type, 
+                          color = df$treatment)) +
+geom_point(size =7) + geom_hline(yintercept = 0, lty = 2, alpha =0.5) + 
+geom_vline(xintercept = 0, lty = 2, alpha = 0.5)+
+coord_fixed() + 
+scale_color_manual(values = c("deeppink1", "deepskyblue", 
+"darkorange",  "springgreen4")) + 
+theme_bw() + 
+scale_y_continuous(na.value = c(-2, 3), n.breaks = 10) +
+scale_x_continuous(na.value = c(-1, 1), n.breaks = 10) + 
+labs(col="Treatment", shape = "Segment") + 
+xlab(label = paste("dbRDA1 [", round(eig.vals[[1]]/sum(eig.vals)*100, 1), 
+                    "% of fitted and", 
+                    round(eig.vals[[1]]/inertia.total*100, 1), 
+                    "% of total variation]")) + 
+ylab(label = paste("dbRDA2 [", round(eig.vals[[2]]/sum(eig.vals)*100, 1), 
+"% of fitted and", round(eig.vals[[2]]/inertia.total*100, 1), 
+"of total variation]")) + 
+theme(axis.title = element_text(size = 15), 
+text = element_text(size = 13, face = "bold"),
+    axis.text.x =element_text(size =10, face = "bold"),
+axis.text.y =element_text(size =10, face = "bold")) + 
+ggtitle(label = "RDA plot of scores for samples, VST count data")  # + 
+#stat_ellipse(data = score.site, aes(dbRDA1, dbRDA2), type = "euclid", linetype = 2, inherit.aes = F, geom = "polygon" )
+
+ggsave("./Outputs/Barplot and venn/Beta diversity/bray.RDA.scores.site.jpeg", height = 8, width = 9, dpi =300)
+
+rm(rda.whole, rda.whole.main, rda.whole.margin, df)
 ```
 ![dbrda.model](https://github.com/farhadm1990/Microbiome_analysis/blob/main/Pix/dbrda.model.PNG)
-> Figure 17. The dbrda model summary. Constrained is related to  the variance defiend by our treatments and the model component, and unconstrained is unexplained variance and is shows it for different MDS axis. Conditional term, here is our litter, is what we limitted the permutation within. Proportion column shows the proportion of variance explained by different components of our model.
+> Figure 16. The dbrda model summary. Constrained is related to  the variance defiend by our treatments and the model component, and unconstrained is unexplained variance and is shows it for different MDS axis. Conditional term, here is our litter, is what we limitted the permutation within. Proportion column shows the proportion of variance explained by different components of our model.
 
 
-```R
-anova(db.rda.wunifrac, permutation =h) #first do the omnibus test to give you an overal test on the model
-anova(db.rda.wunifrac, permutation =h, by = "margin")
-anova(db.rda.wunifrac, permutation =h, by = "term")
-anova(db.rda.wunifrac, permutation =h, by = "axis")
-```
 ![dbrda.omnibus](https://github.com/farhadm1990/Microbiome_analysis/blob/main/Pix/dbrda.omnibus.PNG)
 
-> Figure 18. dbRDA test statistics and psudo-F for the whole model. F is the psudo-F, which is the ratio between the variance of the tested variables and the residual variance.
+> Figure 17. dbRDA test statistics and psudo-F for the whole model. F is the psudo-F, which is the ratio between the variance of the tested variables and the residual variance.
 
 ![dbrda.margin](https://github.com/farhadm1990/Microbiome_analysis/blob/main/Pix/dbrda.margin.PNG)
 
-Figure 19. dbRDA test statistics and psudo-F for the marginal effects.
+Figure 18. dbRDA test statistics and psudo-F for the marginal effects.
 
 ![dbrda.term](https://github.com/farhadm1990/Microbiome_analysis/blob/main/Pix/dbrda.term.PNG)
 
-Figure 20. dbRDA test statistics and psudo-F for different independent variables passed on to the model.
+Figure 19. dbRDA test statistics and psudo-F for different independent variables passed on to the model.
 
 ![dbrda.axis](https://github.com/farhadm1990/Microbiome_analysis/blob/main/Pix/dbrda.axis.PNG)
 
-Figure 21. dbRDA test statistics and psudo-F for different dbRSA axis.
+Figure 20. dbRDA test statistics and psudo-F for different dbRSA axis.
 
 
 Now you can extract the `site` and `centroid` scores from your `db.rda.wunifrac` artifact and make an ordination plot out of the model, which is the variation explained only by the treatments. 
 
-```R
-# Extreacting the goodies :)
-score.site = vegan::scores(db.rda.wunifrac, display = "sites") %>% as.data.frame
-score.centroid = vegan::scores(db.rda.wunifrac, display = "cn") %>% as.data.frame
-rownames(score.centroid) <- levels(sample_data(pst.qPCR)$treatment)
 
-eig.vals = db.rda.wunifrac$CCA$eig
-inertia.total = db.rda.wunifrac$tot.chi #Total variation (inertia) explained. This number should be used as the denominator for measuring the amount of variance out of totoal variance wxplained by each dbrda axis.
-
-#Ordination Plot
-score.site %>% ggplot(aes(dbRDA1, dbRDA2, shape = sample_data(pst.qPCR)$sample_type, 
-                          color = sample_data(pst.qPCR)$treatment)) +
-geom_point(size =5 ) + geom_hline(yintercept = 0, lty = 2, alpha =0.5) + geom_vline(xintercept = 0, lty = 2,
-                                                                                  alpha = 0.5)+
-coord_fixed() + scale_color_manual(values = c("deeppink1", "deepskyblue", "darkorange",  "springgreen4")) + 
-theme_bw() + scale_y_continuous(na.value = c(-2, 3), n.breaks = 10) +
-scale_x_continuous(na.value = c(-1, 1), n.breaks = 10) + labs(col="Treatment", shape = "Segment") + 
-xlab(label = paste("dbRDA1 [", round(eig.vals[[1]]/sum(eig.vals)*100, 1), 
-                    "% of fitted and", round(eig.vals[[1]]/inertia.total*100, 1), "% of total variation]")) + 
-ylab(label = paste("dbRDA2 [", round(eig.vals[[2]]/sum(eig.vals)*100, 1), "% of fitted and", round(eig.vals[[2]]/inertia.total*100, 1), "of total variation]")) + 
-theme(axis.title = element_text(size = 15), text = element_text(size = 13, face = "bold"),
-    axis.text.x =element_text(size =10, face = "bold"),
-axis.text.y =element_text(size =10, face = "bold")) + ggtitle(label = "dbRDA plot of WUF scores for site")  # + 
-#stat_ellipse(data = score.site, aes(dbRDA1, dbRDA2), type = "euclid", linetype = 2, inherit.aes = F, geom = "polygon" )
-
-ggsave("./Beta diversity/wunifrac.dbRDA.scores.site.jpeg", height = 8, width = 9, dpi =300)
-```
-
-![dbrda.plot](https://github.com/farhadm1990/Microbiome_analysis/blob/main/Pix/wunifrac.dbRDA.scores.site.jpeg)
-> Figure 22. Ordination plot of dbRDA site or sample scores. Each point reprents one sample. On different axis you can see the variance explained by our constrained varialbes, i.e. treatments after fitting the model and the other variance explained by treatment out of total variance. 
+![dbrda.plot](https://github.com/farhadm1990/Microbiota-analysis/blob/main/Pix/bray.dbRDA.scores.site.jpeg)
+> Figure 21. Ordination plot of dbRDA site or sample scores for Bray-Curtis dissimilarity coefficients. Each point reprents one sample. On different axis you can see the variance explained by our constrained varialbes, i.e. treatments after fitting the model and the other variance explained by treatment out of total variance. 
 
 You can also fit environmental factors and taxa on this ordination plot. In this instance, I will try to see which chemicals, e.g. SCFA had associations with any treatments on our dbRDA plot.
 
@@ -1136,7 +1689,7 @@ geom_text(data = arrow.df, aes(PCoA1, PCoA2, label = taxon), position = position
 ggsave("./ordinations/wunifrac.dbRDA.scores.site.labeled.jpeg", height = 8, width = 10, dpi =300)
 ```
 ![dbrda.ord.label](https://github.com/farhadm1990/Microbiome_analysis/blob/main/Pix/wunifrac.dbRDA.scores.site.labeled.jpeg)
-> Figure 23. Ordination plot of dbRDA site or sample scores and labeled with chemical data. The direction of arrows indicates association between biogenic amines and red meat consumption for instance.
+> Figure 22. Ordination plot of dbRDA site or sample scores and labeled with chemical data. The direction of arrows indicates association between biogenic amines and red meat consumption for instance.
 
 ## 7. Differential abundance analysis of taxa: DESeq2
  
@@ -1381,7 +1934,7 @@ ggsave("./Deseq_species/volc_deseq_gbdss_vs_ct.jpeg", device = "jpeg", dpi = 300
 ```
 
 ![volcano](https://github.com/farhadm1990/Microbiome_analysis/blob/main/Pix/volc_deseq_gbdss_vs_ct.jpeg) 
-> Figure 24. Volcano plot of differential abundance species. X axis represents Log2FoldChange and Y axis is -log10 of adjusted p-value.
+> Figure 23. Volcano plot of differential abundance species. X axis represents Log2FoldChange and Y axis is -log10 of adjusted p-value.
 
 
 ```R
@@ -1417,7 +1970,7 @@ DSS")  +  geom_text (mapping = aes(x=-23, y = 0.65, label = "FDR < 0.05, |LFC| >
 ggsave("./Deseq_phylum/difabund_dss.jpeg", device = "jpeg", dpi = 300)
 ```
 ![waterfall](https://github.com/farhadm1990/Microbiome_analysis/blob/main/Pix/difabund_dss.jpeg)
-> Figure 25. Barplot of differentially abundance for phylum. 
+> Figure 24. Barplot of differentially abundance for phylum. 
 
 
 ```R
@@ -1480,7 +2033,7 @@ ggsave("./Deseq_species/difabund_spec_dss.jpeg", device = "jpeg", dpi  = 300, he
 
 ```
 ![diff.abund.dss](https://github.com/farhadm1990/Microbiome_analysis/blob/main/Pix/difabund_spec_dss.jpeg)
-> Figure 26. Waterfal plot of differentally abundant species for groups treated with DSS.
+> Figure 25. Waterfal plot of differentally abundant species for groups treated with DSS.
 
 
 #
@@ -1494,33 +2047,10 @@ chem.dat = read.table("./qPCR.metadata.chemicals.tsv", sep = "\t", header = T)[1
 chem.dat <- column_to_rownames(chem.dat, "SampleID")
 chem.dat <- chem.dat[complete.cases(chem.dat),]
 
-chemical.df = data.frame(sample_data(pst.qPCR)[rownames(sample_data(pst.qPCR)) %in% rownames(chem.dat), 
-                                               colnames(sample_data(pst.qPCR)) %in% c('litter', 'pig_no', 'Pen', 'treatment', 
-                                                                                        'sample_type', 'gb', 'dss', 'blok')],
-                        chem.dat[rownames(chem.dat) %in% rownames(sample_data(pst.qPCR)),
-                                                            colnames(chem.dat) %in% c('SCFA', 'Acetate', 'Propionate','Butyrate','Iso.acids','Valerate',
-                                                           'Biogenic.amines','Agmatin','Puterscin','Cadaverin')])
-#chemical.df = chemical.df[complete.cases(chemical.df)] #remove NA
-chemdat.scfa = chemical.df[, colnames(chemical.df) %in% c('litter', 'pig_no', 'Pen', "treatment", "sample_type", 'gb', 'dss', 'blok', "SCFA", "Acetate", 
-                                           "Propionate", "Butyrate", "Iso.acids", "Valerate")] %>% data.frame
-
-chemdat.biogenic = chemical.df[, colnames(chemical.df) %in% c("litter", "pig_no", "Pen", "treatment", "sample_type",'gb', 'dss', 'blok',
-                                                              "Biogenic.amines", "Agmatin", "Puterscin", "Cadaverin")]%>% data.frame
-                                                              
-#First we split the data into different segments since we have a significant effect of segment on the responses
-prox.pst = subset_samples(pst.qPCR, sample_type == "Proximal")
-dist.pst = subset_samples(pst.qPCR, sample_type == "Distal")
-feces.pst = subset_samples(pst.qPCR, sample_type == "Feces")
-
-#chemical data
-prox.chem = chemdat.scfa[chemdat.scfa$sample_type == "Proximal",]%>% data.frame
-dist.chem = chemdat.scfa[chemdat.scfa$sample_type == "Distal",]%>% data.frame
-feces.chem = chemdat.scfa[chemdat.scfa$sample_type == "Feces",]%>% data.frame
 ```
 #
-### Generalized linear mixed effect model for chemicals
+### Generalized linear mixed effect model for chemicals across all segments
 
-#### proximal colon
 ```R
 
 library(nlme)
@@ -1530,78 +2060,131 @@ library(car)
 library(emmeans)
 library(multcomp)
 
-iso.lm = glmer(Iso.acids  ~ gb * dss + blok + (1|litter), 
-           data = data.frame(prox.chem), family = Gamma(link = "log")) 
-iso.red = glmer(Iso.acids   ~ gb * dss   + (1|litter), 
-           data = data.frame(prox.chem), family = Gamma(link = "log"))
+resps <- colnames(chem.dat)[c(12, 13, 16)]
+resps <- colnames(chem.dat)[c(9:11, 14,15,17,18)]
 
-anova(iso.lm, iso.red)
+test <- glmer.helper(df = chem.dat, response = resps, st.seed = 10, 
+pair.form = "pairwise~ gb + dss | sample_type",
+formu = "  ~ gb *dss * sample_type + blok + (1|pig_no)",
+plot.form = "dss~gb | sample_type")
 
-car::Anova(iso.red, type = 2) #analysis of variance by chi-square test
+#for the effect of segment
+samps <- list()
+for(i in resps){
+samps[[i]] = emmeans(test[[1]][[i]], ~ sample_type, type = "response", adjust = "BH") %>%  cld(Letters = letters,  confit.glht = "BH")%>%
+data.frame() %>% 
+mutate(check = ifelse( unique(.group) %>% length() > 1, "TRUE", "FALSE")) %>% 
+  mutate(resps = ifelse(check == "TRUE",
+  glue("{round(response,1)}({round(asymp.LCL)}-{round(asymp.UCL)}){.group}"), 
+  glue("{round(response,1)}({round(asymp.LCL)}-{round(asymp.UCL)})"))) %>% 
+  dplyr::select(-df, -response, -.group, -check, -asymp.UCL, -asymp.LCL,   -SE) #%>% 
+  #pivot_wider(names_from = sample_type, values_from = resps) 
+}
 
-iso.pair = pairs(emmeans(iso.red, ~ gb + dss), type = "response", adjust = "BH") %>% cld(Letters = letters) # type="response" can give you a back transformed pair-wise comparision of EMMs. 
 
-
-cld(emmeans(iso.red, ~  gb + dss, adjust = "BH",  type = "response"),Letters = letters) 
-
-```
-Extracting the fitted values
-```R
-#extracting fitted values
-fitted.scfa.prox = data.frame(SCFA = fitted(scfa.lm, "response"),
-            Butyrate = fitted(buty.lm, "response"),
-            Propionate = fitted(prop.red, "response"),
-            Acetate = fitted(acet.red, "response"),
-            Iso.acids = fitted(iso.red, "response"),
-            Valerat= fitted(valer.red, "response"))
-#fitted.scfa.prox = data.frame(prox.chem[rownames(prox.chem) %in% 
- #       rownames(fitted.scfa.prox),1:7], fitted.scfa.prox)
-#pairwise comparisons
-pairs.sfa.prox = list(scfa = scfa.pair, butyrate = buty.pair,
-                      propionate = prop.pair, valerate = val.pair, 
-                      acetate = acet.pair, iso.acids = iso.pair)
+#writing up the results
+lapply(test[[2]], function(x) write.table( data.frame(x), './Chemicals/chemics.tsv', append= T, sep= "\t", row.names = F))
 ```
 
-You can do do the same for `distal colon` and `feces` samples and make a final `boxplot` out of responses.
-
+## Visualzing chemical data
 ```R
 library(ggpubr)
 
-chemdat.scfa %>% dplyr::select(5, 6, 9:14) %>% melt %>% filter(sample_type %in% "Proximal") %>% ggplot(aes(x = treatment, y = value)) + 
-geom_boxplot(aes(fill = treatment), outlier.color = NA) + facet_wrap(~ variable, scale = "free_y", nrow = 1) + labs(fill = "Treatment") + 
-theme_bw() + theme(axis.title.x = element_text(face = "bold"),
-axis.title.y = element_text(face = "bold"), axis.text.x = element_text(face = "bold"), 
-                   legend.title = element_text(face = "bold")) + xlab("Treatment") + ylab("Concentration, mmol/Kg wet sample") + 
-scale_fill_manual(values = c("deeppink1", "deepskyblue", "darkorange",  "springgreen4")) + ggtitle("Proximal") + 
-geom_jitter(color = "black", alpha = 0.4, size = 1, show.legend = F, position =  position_jitter(0.1)) +
-scale_color_manual(values = c("deeppink1", "deepskyblue", "darkorange",  "springgreen4"))
+library(reshape2)
+library(ggplot2)
+library(ggpubr)
+library(patchwork)
 
-ggsave("./Chemicals/proximal.scfa.jpeg", width = 14, height = 6, dpi = 300, device = "jpeg")
+geom_pwc()
 
-chemdat.scfa %>% dplyr::select(5, 6, 9:14) %>% melt %>% filter(sample_type %in% "Distal") %>% ggplot(aes(x = treatment, y = value)) + 
-geom_boxplot(aes(fill = treatment), outlier.color = NA) + facet_wrap(~ variable, scale = "free_y", nrow = 1) + labs(fill = "Treatment") + 
-theme_bw() + theme(axis.title.x = element_text(face = "bold"),
-axis.title.y = element_text(face = "bold"), axis.text.x = element_text(face = "bold"), 
-                   legend.title = element_text(face = "bold")) + xlab("Treatment") + ylab("Concentration, mmol/Kg wet sample") + 
-scale_fill_manual(values = c("deeppink1", "deepskyblue", "darkorange",  "springgreen4")) + ggtitle("Distal") + 
-geom_jitter(color = "black", alpha = 0.4, size = 1, show.legend = F, position =  position_jitter(0.1)) +
-scale_color_manual(values = c("deeppink1", "deepskyblue", "darkorange",  "springgreen4"))
+comparison = list(c("CT", "WD"), c("CT", "DSS"),
+c("WD","DSS"), c("DSS", "WDDSS"))
 
-ggsave("./Chemicals/distal.scfa.jpeg", width = 14, height = 6, dpi = 300, device = "jpeg")
+#Proximal
+scf.p <- chem.dat %>% 
+melt %>% 
+filter(sample_type == "Proximal") %>% 
+filter(variable %in% c("SCFA", 
+"Acetate", "Propionate", 
+"Butyrate", "Iso.acids", 
+"Valerate")) %>%
+ ggplot(aes(x = treatment, y = value)) +
+ geom_violin(aes(fill = treatment), 
+ show.legend = F, trim = F) +
+geom_boxplot(width = 0.2) + 
+facet_wrap(~ variable, 
+scale = "free_y", nrow = 1) +
+scale_fill_manual(values = c("deeppink1", 
+"deepskyblue", "darkorange",  "springgreen4"))+
+theme_bw()+
+geom_pwc(
+    aes(group = treatment), tip.length = 0,
+    method = "t_test", label = "p.adj.signif",
+    p.adjust.method = "BH",
+    bracket.nudge.y = 0.08, 
+    hide.ns = T
+  ) + 
+#ggtitle("SCFA in proximal") + 
+ylab("") + 
+xlab("") + 
+labs(fill = "Treatment") + 
+theme(text = element_text(face = "bold"))
 
-chemdat.scfa %>% dplyr::select(5, 6, 9:14) %>% melt %>% filter(sample_type %in% "Feces") %>% ggplot(aes(x = treatment, y = value)) + 
-geom_boxplot(aes(fill = treatment), outlier.color = NA) + facet_wrap(~ variable, scale = "free_y", nrow = 1) + labs(fill = "Treatment") + 
-theme_bw() + theme(axis.title.x = element_text(face = "bold"),
-axis.title.y = element_text(face = "bold"), axis.text.x = element_text(face = "bold"), 
-                   legend.title = element_text(face = "bold")) + xlab("Treatment") + ylab("Concentration, mmol/Kg wet sample") + 
-scale_fill_manual(values = c("deeppink1", "deepskyblue", "darkorange",  "springgreen4")) + ggtitle("Feces") + 
-geom_jitter(color = "black", alpha = 0.4, size = 1, show.legend = F, position =  position_jitter(0.1)) +
-scale_color_manual(values = c("deeppink1", "deepskyblue", "darkorange",  "springgreen4"))
+?rstatix::emmeans_test()
 
-ggsave("./Chemicals/feces.scfa.jpeg", width = 14, height = 6, dpi = 300, device = "jpeg")
+#distal
+scf.p2 <- chem.dat %>% melt %>% filter(sample_type == "Distal") %>% filter(variable %in% c("SCFA", 
+"Acetate", "Propionate", "Butyrate", "Iso.acids", "Valerate")) %>%
+ ggplot(aes(x = treatment, y = value)) +
+ geom_violin(aes(fill = treatment), trim = F) +
+geom_boxplot(width = 0.2) + facet_wrap(~ variable, scale = "free_y", nrow = 1) +
+scale_fill_manual(values = c("deeppink1", "deepskyblue", "darkorange",  "springgreen4"))+
+theme_bw()+
+geom_pwc(
+    aes(group = treatment), tip.length = 0,
+    method = "emmeans_test", label = "p.adj.signif",
+    p.adjust.method = "BH",
+    bracket.nudge.y = 0.08, 
+    hide.ns = T
+  ) +
+#ggpubr::stat_compare_means(method = "t.test", paired = F,  label.y = NULL,
+#comparisons = comparison, label = "p.signif") + 
+#ggtitle("SCFA in Distal") + 
+ylab("Concentration, mmol/kg sample") + 
+xlab("") + labs(fill = "Treatment") + theme(text = element_text(face = "bold"))
+
+#Feces
+scf.p3 <- chem.dat %>% melt %>% filter(sample_type == "Feces") %>% filter(variable %in% c("SCFA", 
+"Acetate", "Propionate", "Butyrate", "Iso.acids", "Valerate")) %>%
+ ggplot(aes(x = treatment, y = value)) +
+ geom_violin(aes(fill = treatment), show.legend = F, trim = F) +
+geom_boxplot(width = 0.2) + 
+facet_wrap(~ variable, scale = "free_y", nrow = 1) +
+scale_fill_manual(values = c("deeppink1", 
+"deepskyblue", "darkorange",  
+"springgreen4"))+
+theme_bw()+
+geom_pwc(
+    aes(group = treatment), tip.length = 0,
+    method = "emmeans_test", label = "p.adj.signif",
+    p.adjust.method = "BH",
+    bracket.nudge.y = 0.08, 
+    hide.ns = T
+  ) + 
+#ggtitle("SCFA in Feces") + 
+ylab("") + 
+xlab("") + labs(fill = "Treatment") +
+theme(text = element_text(face = "bold"))
+
+scf.pl <- scf.p + scf.p2 + scf.p3 + patchwork::plot_layout(ncol = 1, nrow = 3)
+
+ggsave("./Outputs/Boxplot/Chemical data/scfa.all.jpeg", width = 15, 
+height = 15, dpi = 300)
+
+
 ```
-![chemical data](https://user-images.githubusercontent.com/70701452/173190129-cc51a15c-09c7-42a9-8de5-ab000bb1038e.png)
-> Figure 28. Consentration of short-chain fatty acids (SCFA) produced by bacterial fermentation in proximal colon (A), in distal colon (B) and in feces (C). 
+![chemical data](https://github.com/farhadm1990/Microbiota-analysis/blob/main/Pix/scfa.all.jpeg)
+> Figure 26. Consentration of short-chain fatty acids (SCFA) produced by bacterial fermentation in proximal colon (A), in distal colon (B) and in feces (C). 
 
 #
 
@@ -1703,7 +2286,7 @@ pheat.chem = pheatmap( angle_col = 45, t(Biobase::exprs(x)[o,]), cluster_rows = 
 ggsave(plot = pheat.chem, filename = "./Heatmap/heatmap.chemicals_100_rotated.jpeg", device = "jpeg", dpi = 300, height = 23, width = 30)
 ```
 ![heatmap chemicals_100_rotated](https://github.com/farhadm1990/Microbiome_analysis/blob/main/Pix/heatmap.chemicals_100_rotated.jpeg)
-> Figure 29. Heatmap association of top 100 taxa with chemicals produced by bacterial fermentation at species/ASV level. Each species is colored by its correlated phylum.
+> Figure 27. Heatmap association of top 100 taxa with chemicals produced by bacterial fermentation at species/ASV level. Each species is colored by its correlated phylum.
 
 
 ---
