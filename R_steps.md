@@ -2196,7 +2196,7 @@ library("pheatmap")
 library(Biobase)
 
 #Data preparation
-physeq = gloomer(pst.qPCR, taxa_level = "Species")
+physeq = gloomer(ps, taxa_level = "Species")
 pst.qpcr.rel.spec = filter_taxa(physeq, function(x) sum(x>0)>0, TRUE)
 pst.qpcr.rel.spec = transform_sample_counts(pst.qpcr.rel.spec, function(x) x/sum(x)) #making a rel abund count data
                                            
