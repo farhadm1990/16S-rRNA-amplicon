@@ -786,7 +786,7 @@ ggsave(filename = "./alpha_dss_abs_faith.jpeg", device = "jpeg", dpi = 300, widt
 
 ```
 ![alt text](https://github.com/farhadm1990/Microbiome_analysis/blob/main/Pix/alpha_dss_abs_faith.jpeg)
-> Figure 10. Violin plot of FaithPD metric for four treatments. Pairwise comparisons were adjusted by BH at P < 0.5.
+> Figure 7. Violin plot of FaithPD metric for four treatments. Pairwise comparisons were adjusted by BH at P < 0.5.
 
 #
 
@@ -1080,7 +1080,7 @@ ggplot(aes(x= treatment, y = abs.count, fill = Phylum)) +
 ```
  
 ![alt text](https://github.com/farhadm1990/Microbiome_analysis/blob/main/Pix/barplot_phylum_absolute.jpeg) 
- > Figure 7. Stacked barplot for different phyla in 4 treatment groups.
+ > Figure 8. Stacked barplot for different phyla in 4 treatment groups.
 
 
 #
@@ -1124,7 +1124,7 @@ ggsave(plot = ven.diag, "./venn.taxa.species.jpeg", device = "jpeg", dpi = 500)
 
 ```
 ![alt text](https://github.com/farhadm1990/Microbiome_analysis/blob/main/Pix/venn.taxa.species.jpeg)
-> Figure 8. Venn diagram of shared species between treatments.
+> Figure 9. Venn diagram of shared species between treatments.
 
 #
 ### Phylum level
@@ -1161,7 +1161,7 @@ ggsave(plot = ven.diag, "./venn.taxa.phylum.jpeg", device = "jpeg", dpi = 500)
 ```
 
 ![venn_diagram](https://github.com/farhadm1990/Microbiome_analysis/blob/main/Pix/venn.taxa.phylum.jpeg)
-> Figure 9. Venn diagram of shared phylum between treatments.
+> Figure 10. Venn diagram of shared phylum between treatments.
 
 ## Estimating beta diversity
 ### To estimate beta diversity, it is advisable to `log` transform your data to account for the zero inflation. We can also use variance-stablizing transformed data.
@@ -1617,7 +1617,7 @@ for(i in seq_len(ncol(sample_data(pst.qPCR)))) {
 Then we can fit chemical data to our dbrda model and make the ordination data frames for ploting.
 
 ```R
-pst.spec <- gloomer(ps = pst.qPCR.log, taxa_level = "Species", NArm = TRUE)
+pst.spec <- gloomer(ps = ps.vst, taxa_level = "Species", NArm = TRUE)
 
 #Envfit for chemical data
 env.chem = sample_data(pst.spec)[,15:24] %>% as.matrix
@@ -1697,8 +1697,8 @@ Now that we found out the main effects of red meat consumption and DSS treatment
 
 ```R
 #glooming the taxa 
-#phyl.qpcr =  gloomer(ps = pst.qPCR, taxa_level = "Phylum", NArm = TRUE)
-#spec.qpcr = gloomer(pst.qPCR, taxa_level =  "Species", NArm = TRUE)
+#phyl.qpcr =  gloomer(ps = ps, taxa_level = "Phylum", NArm = TRUE) #we use non rarefied/normalized absolute data
+#spec.qpcr = gloomer(ps = ps, taxa_level =  "Species", NArm = TRUE)
 
 
 #Creating the experimental design
