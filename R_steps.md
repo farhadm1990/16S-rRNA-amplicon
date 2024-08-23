@@ -121,13 +121,13 @@ for(i in seq_len(ncol(sample_data(pst)))) {
 #Optional: renaming the variable levels
 #Treatment
 iflese(sample_data(pst)$treatment == "ct", "CT", ifelse(sample_data(pst)$treatment == "gb", "GB",
-ifelse(sample_data(pst)$treatment == "dss", "DSS", ifelse(sample_data(pst)$treatment == "gbdss", "GBDSS", "NegCtrl")) #NegCtrl marks the negative samples.
+ifelse(sample_data(pst)$treatment == "dss", "DSS", ifelse(sample_data(pst)$treatment == "gbdss", "GBDSS", "NegCtrl")))) #NegCtrl marks the negative samples.
 
 #Segment
 iflese(sample_data(pst)$sample_type == "digesta_25", "Proximal", ifelse(sample_data(pst)$sample_type == "digesta_50", "Midcolon",
 ifelse(sample_data(pst)$sample_type == "digesta_75", "Distal", "Feces")))
 
-
+**You can follow up more advanced bioinformatics and statistics on microbiome data on [Microloop](https://farhad1990.shinyapps.io/microloop)**
 # Releveling the treatment factors
 
 sample_data(pst)$treatment<-factor(sample_data(pst)$treatment, levels = c('CT','GB','DSS', 'GBDSS','NegCtrl'))
